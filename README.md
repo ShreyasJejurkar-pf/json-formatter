@@ -41,3 +41,7 @@ The **Log viewer** tab opens a Grafana logs panel CSV export, a JSON array of lo
 - Opening an entry shows its message with the embedded JSON formatted, then its fields grouped as entry, attributes, resources and Grafana labels. Fields that are the same in every entry are hidden from each entry and listed once in the summary.
 - **Prev** and **Next**, or the `k` and `j` keys, step through the entries one at a time.
 - Each entry can be copied as JSON or opened in the formatter.
+
+## Saved settings
+
+The page saves theme, font size, indent, nested JSON expansion, the open tab, log sort order and the hide-common-fields option in the browser's local storage, and applies them on the next visit. It never stores pasted text or opened files.

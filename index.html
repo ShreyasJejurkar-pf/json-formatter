@@ -927,6 +927,18 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch {} }
   };
 
+  // Controls restored on load. Input text and log files are never stored, since they hold customer data.
+  for (const id of ['expand', 'indent', 'sort', 'hideCommon']) {
+    const el = $(id);
+    const prop = el.type === 'checkbox' ? 'checked' : 'value';
+    const saved = store.get('opt.' + id);
+    if (saved !== null) {
+      if (prop === 'checked') el.checked = saved === 'true';
+      else if ([...el.options].some(o => o.value === saved)) el.value = saved;
+    }
+    el.addEventListener('change', () => store.set('opt.' + id, String(el[prop])));
+  }
+
   // Theme follows the system until the user picks one.
   const themeBtn = $('theme');
   const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
@@ -1161,7 +1173,6 @@
 
     Object.assign(LOG, { name, entries, consts, traceIdx, open: new Set(), curK: null, f: { q: '', sev: '', mod: '', trace: '', type: '' } });
     $('q').value = '';
-    $('sort').value = 'asc';
     $('dropErr').hidden = true;
     $('drop').hidden = true;
     $('logUi').hidden = false;
@@ -1501,6 +1512,7 @@
 
   function showView(id) {
     for (const v of ['fmtView', 'logView']) $(v).hidden = v !== id;
+    store.set('view', id);
     document.querySelectorAll('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === id)));
   }
   document.querySelector('.tabs').addEventListener('click', (e) => {
@@ -1508,6 +1520,7 @@
     if (b) showView(b.dataset.view);
   });
 
+  if (store.get('view') === 'logView') showView('logView');
   run();
 })();
 </script>
