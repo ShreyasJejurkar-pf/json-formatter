@@ -24,6 +24,7 @@
     --btn-hover: #efefea;
     --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
     --indent: 2ch;
+    --code-size: 13px;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -83,6 +84,33 @@
   }
   header h1 { font-size: 17px; margin: 0; font-weight: 650; }
   header p { margin: 0; color: var(--muted); font-size: 13px; flex: 1; }
+  .tools { display: flex; align-items: center; gap: 10px; }
+  .font-ctl { display: inline-flex; align-items: center; gap: 4px; }
+  .font-ctl button { min-width: 32px; padding: 3px 6px; font-weight: 600; }
+  .font-ctl button:disabled { opacity: .4; cursor: default; background: transparent; }
+  .font-size { min-width: 3.4em; text-align: center; color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .theme-btn { display: inline-flex; align-items: center; gap: 7px; }
+  .track {
+    position: relative;
+    width: 30px;
+    height: 16px;
+    border-radius: 8px;
+    background: var(--border);
+    transition: background .15s;
+  }
+  .thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--panel);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .3);
+    transition: transform .15s;
+  }
+  .theme-btn[aria-checked="true"] .track { background: var(--accent); }
+  .theme-btn[aria-checked="true"] .thumb { transform: translateX(14px); }
 
   main {
     flex: 1;
@@ -137,7 +165,7 @@
     padding: 12px;
     background: transparent;
     color: var(--text);
-    font: 13px/1.5 var(--mono);
+    font: var(--code-size)/1.5 var(--mono);
   }
 
   .out {
@@ -145,7 +173,7 @@
     min-height: 0;
     overflow: auto;
     padding: 12px 12px 16px 3ch;
-    font: 13px/1.5 var(--mono);
+    font: var(--code-size)/1.5 var(--mono);
   }
   .out:empty::before {
     content: "Formatted output appears here.";
@@ -219,8 +247,18 @@
 <body>
 <header>
   <h1>JSON formatter</h1>
-  <button id="theme" title="Switch theme">Theme: auto</button>
   <p>Formats JSON, and also the JSON inside string values such as <code>"Message": "request: {\"a\":1}"</code>. Everything runs in this page. Nothing you paste is sent anywhere.</p>
+  <div class="tools">
+    <div class="font-ctl" role="group" aria-label="Font size">
+      <button id="fontDown" title="Smaller text (Ctrl+Alt+-)" aria-label="Smaller text">A&minus;</button>
+      <span id="fontSize" class="font-size" aria-live="polite">13px</span>
+      <button id="fontUp" title="Larger text (Ctrl+Alt+=)" aria-label="Larger text">A+</button>
+    </div>
+    <button id="theme" class="theme-btn" role="switch" aria-checked="false" title="Toggle dark mode">
+      <span class="track"><span class="thumb"></span></span>
+      <span>Dark</span>
+    </button>
+  </div>
 </header>
 
 <main>
@@ -626,21 +664,46 @@
   });
   $('sample').addEventListener('click', () => { input.value = SAMPLE; run(); });
 
-  // Theme: auto -> light -> dark.
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  };
+
+  // Theme follows the system until the user picks one.
   const themeBtn = $('theme');
-  const themes = ['auto', 'light', 'dark'];
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)');
   function applyTheme(t) {
-    if (t === 'auto') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme', t);
-    themeBtn.textContent = 'Theme: ' + t;
+    document.documentElement.setAttribute('data-theme', t);
+    themeBtn.setAttribute('aria-checked', String(t === 'dark'));
   }
-  let theme = 'auto';
-  try { theme = localStorage.getItem('theme') || 'auto'; } catch {}
-  applyTheme(theme);
+  const savedTheme = store.get('theme');
+  applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : (systemDark.matches ? 'dark' : 'light'));
+  systemDark.addEventListener('change', (e) => {
+    if (!store.get('theme')) applyTheme(e.matches ? 'dark' : 'light');
+  });
   themeBtn.addEventListener('click', () => {
-    theme = themes[(themes.indexOf(theme) + 1) % themes.length];
-    applyTheme(theme);
-    try { localStorage.setItem('theme', theme); } catch {}
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    store.set('theme', next);
+  });
+
+  const FONT_MIN = 10, FONT_MAX = 24;
+  let fontSize = +store.get('fontSize') || 13;
+  function applyFont(px) {
+    fontSize = Math.min(FONT_MAX, Math.max(FONT_MIN, px));
+    document.documentElement.style.setProperty('--code-size', fontSize + 'px');
+    $('fontSize').textContent = fontSize + 'px';
+    $('fontDown').disabled = fontSize <= FONT_MIN;
+    $('fontUp').disabled = fontSize >= FONT_MAX;
+    store.set('fontSize', String(fontSize));
+  }
+  applyFont(fontSize);
+  $('fontDown').addEventListener('click', () => applyFont(fontSize - 1));
+  $('fontUp').addEventListener('click', () => applyFont(fontSize + 1));
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || !e.altKey) return;
+    if (e.key === '=' || e.key === '+') { e.preventDefault(); applyFont(fontSize + 1); }
+    else if (e.key === '-') { e.preventDefault(); applyFont(fontSize - 1); }
   });
 
   run();
