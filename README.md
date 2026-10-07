@@ -44,4 +44,6 @@ The **Log viewer** tab opens a Grafana logs panel CSV export, a JSON array of lo
 
 ## Saved settings
 
-The page saves theme, font size, indent, nested JSON expansion, the open tab, log sort order and the hide-common-fields option in the browser's local storage, and applies them on the next visit. It never stores pasted text or opened files.
+The page saves theme, font size, indent, nested JSON expansion, the open tab, log sort order and the hide-common-fields option in the browser's local storage, and applies them on the next visit.
+
+Pasted text and the open log file, with its filters and open entries, are kept in `sessionStorage`. They survive a refresh, but the browser deletes them when the tab closes. **Close file** in the log viewer forgets the file straight away.

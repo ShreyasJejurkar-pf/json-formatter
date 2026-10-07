@@ -485,6 +485,7 @@
       <button id="openAll">Expand all</button>
       <button id="closeAll">Collapse all</button>
       <button id="newFile">Open another file</button>
+      <button id="closeFile" title="Close this file and forget it">Close file</button>
       <span id="count" class="count"></span>
     </div>
     <div id="list"></div>
@@ -787,6 +788,7 @@
     document.documentElement.style.setProperty('--indent', indentSel.value === 'tab' ? '4ch' : indentSel.value + 'ch');
     renderSource(null);
 
+    if (!session.set('input', text)) session.del('input');
     if (!text.trim()) { result = null; out.innerHTML = ''; setStatus(''); return; }
 
     let root = null, err = null;
@@ -927,7 +929,14 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch {} }
   };
 
-  // Controls restored on load. Input text and log files are never stored, since they hold customer data.
+  // Pasted text and open log files survive a refresh but are gone when the tab closes.
+  const session = {
+    get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, v); return true; } catch { return false; } },
+    del(k) { try { sessionStorage.removeItem(k); } catch {} }
+  };
+
+  // Controls restored on load. Pasted text and log files go to sessionStorage instead (see `session`).
   for (const id of ['expand', 'indent', 'sort', 'hideCommon']) {
     const el = $(id);
     const prop = el.type === 'checkbox' ? 'checked' : 'value';
@@ -1152,10 +1161,11 @@
   const LOG = { name: '', entries: [], consts: new Map(), traceIdx: new Map(), open: new Set(), curK: null, view: [],
     f: { q: '', sev: '', mod: '', trace: '', type: '' } };
 
-  function loadLogs(text, name) {
+  // `saved` is the view state kept in sessionStorage, passed when restoring after a refresh.
+  function loadLogs(text, name, saved) {
     let records;
-    try { records = readRecords(text); } catch (e) { showDropError(e.message); return; }
-    if (!records.length) { showDropError('No log entries found in this file.'); return; }
+    try { records = readRecords(text); } catch (e) { if (!saved) showDropError(e.message); return; }
+    if (!records.length) { if (!saved) showDropError('No log entries found in this file.'); return; }
 
     const entries = records.map(makeEntry);
     if (entries.every(e => Number.isFinite(e.t))) entries.sort((a, b) => a.t - b.t || a.i - b.i);
@@ -1172,15 +1182,44 @@
     for (const e of entries) if (e.trace && !traceIdx.has(e.trace)) traceIdx.set(e.trace, traceIdx.size);
 
     Object.assign(LOG, { name, entries, consts, traceIdx, open: new Set(), curK: null, f: { q: '', sev: '', mod: '', trace: '', type: '' } });
-    $('q').value = '';
+    if (saved) {
+      Object.assign(LOG.f, saved.f);
+      LOG.open = new Set((saved.open || []).filter(k => k < entries.length));
+      LOG.curK = saved.cur != null && saved.cur < entries.length ? saved.cur : null;
+    } else {
+      session.del('logState');
+      LOG.kept = session.set('logText', text) && session.set('logName', name);
+      if (!LOG.kept) { session.del('logText'); session.del('logName'); }
+    }
+    $('q').value = LOG.f.q;
     $('dropErr').hidden = true;
     $('drop').hidden = true;
     $('logUi').hidden = false;
     fillSelects();
+    $('fSev').value = LOG.f.sev;
+    $('fMod').value = LOG.f.mod;
+    $('fTrace').value = LOG.f.trace;
     renderSummary();
     renderList();
-    showView('logView');
-    $('logView').scrollTop = 0;
+    if (!saved) {
+      showView('logView');
+      $('logView').scrollTop = 0;
+    }
+  }
+
+  function saveLogState() {
+    if (LOG.kept) session.set('logState', JSON.stringify({ f: LOG.f, open: [...LOG.open], cur: LOG.curK }));
+  }
+
+  function closeLogs() {
+    session.del('logText');
+    session.del('logName');
+    session.del('logState');
+    Object.assign(LOG, { name: '', entries: [], open: new Set(), curK: null, view: [], kept: false });
+    $('list').innerHTML = '';
+    $('logUi').hidden = true;
+    $('dropErr').hidden = true;
+    $('drop').hidden = false;
   }
 
   function showDropError(msg) {
@@ -1372,7 +1411,8 @@
     LOG.view = $('sort').value === 'desc' ? list.slice().reverse() : list;
     const withDate = !sameDay();
     $('list').innerHTML = LOG.view.map(e => entryHtml(e, withDate)).join('') || '<p class="hint">No entries match the filters.</p>';
-    $('count').textContent = `${list.length} of ${LOG.entries.length}`;
+    $('count').textContent = `${list.length} of ${LOG.entries.length}` + (LOG.kept ? '' : ' · too large to keep after a refresh');
+    saveLogState();
   }
 
   function setFilter(kind, value) {
@@ -1391,6 +1431,7 @@
     entryEl(LOG.curK)?.classList.remove('cur');
     LOG.curK = k;
     entryEl(k)?.classList.add('cur');
+    saveLogState();
   }
 
   function step(dir) {
@@ -1425,6 +1466,7 @@
       const det = d.querySelector(':scope > .detail');
       if (!det.innerHTML) det.innerHTML = detailHtml(LOG.entries[k]);
     } else LOG.open.delete(k);
+    saveLogState();
   }, true);
 
   list.addEventListener('click', (ev) => {
@@ -1463,6 +1505,7 @@
   $('openAll').addEventListener('click', () => { LOG.view.forEach(e => LOG.open.add(e.k)); renderList(); });
   $('closeAll').addEventListener('click', () => { LOG.open.clear(); renderList(); });
   $('newFile').addEventListener('click', () => $('file').click());
+  $('closeFile').addEventListener('click', closeLogs);
 
   document.addEventListener('keydown', (e) => {
     if ($('logView').hidden || $('logUi').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -1520,6 +1563,14 @@
     if (b) showView(b.dataset.view);
   });
 
+  input.value = session.get('input') || '';
+  const savedLog = session.get('logText');
+  if (savedLog) {
+    let state = null;
+    try { state = JSON.parse(session.get('logState')); } catch {}
+    LOG.kept = true;
+    loadLogs(savedLog, session.get('logName') || 'Log file', state || {});
+  }
   if (store.get('view') === 'logView') showView('logView');
   run();
 })();
