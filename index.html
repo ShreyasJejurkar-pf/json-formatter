@@ -353,6 +353,41 @@
     background: var(--panel);
     padding: 0 8px;
   }
+  .arrow.fail { color: var(--err); }
+  .frow.prow { min-height: 40px; }
+  .pbox {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    max-width: 66%;
+    padding: 3px 10px;
+    border: 1px solid var(--err);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--err) 14%, var(--panel));
+    color: var(--text);
+    font: 12px/1.4 system-ui, sans-serif;
+    text-align: left;
+  }
+  .pbox:hover { background: color-mix(in srgb, var(--err) 22%, var(--panel)); }
+  .pbox.p-error { border-color: var(--num); background: color-mix(in srgb, var(--num) 14%, var(--panel)); }
+  .pbox.p-error:hover { background: color-mix(in srgb, var(--num) 22%, var(--panel)); }
+  .pmark { flex: none; font-weight: 700; color: var(--err); }
+  .p-error .pmark { color: var(--num); }
+  .plabel { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .flegend .lx i { border-color: var(--err); }
+  .pbox .mtime { flex: none; }
+
+  .entry.prob-exception > summary { background: color-mix(in srgb, var(--err) 10%, transparent); }
+  .entry.prob-error > summary { background: color-mix(in srgb, var(--num) 9%, transparent); }
+  .exc { color: var(--err); }
+  .st-sys { color: var(--muted); }
+  .st-app { color: var(--text); }
+  .st-file { color: var(--accent); }
+
   .mtime { display: none; color: var(--muted); font-weight: normal; }
   .mtime .dot { display: inline-block; margin-right: 4px; }
   @media (max-width: 640px) {
@@ -364,6 +399,8 @@
     .frow.internal { min-height: 30px; }
     /* In flow, so a wrapped label makes its row taller; inline left/width still place the arrow. */
     .arrow { position: relative; top: auto; bottom: auto; padding: 6px 0 8px; }
+    .pbox { position: relative; left: auto; top: auto; transform: none; margin: 6px auto; max-width: 94%; flex-wrap: wrap; }
+    .plabel { white-space: normal; }
     .lane-h { padding: 4px 2px; }
     .lane-h b { font-size: 12px; }
     .lane-h span { font-size: 10.5px; }
@@ -729,6 +766,7 @@
         <li>The summary shows where the logs came from and lists every module, trace, ID and log type. Click one to filter the list, and click it again to remove the filter.</li>
         <li>Rows are in time order. The <span class="delta slow">+664 ms</span> next to each time is the gap since the previous row. Orange means 250 ms or more and red means 1 s or more.</li>
         <li>Click a row to see its message and fields. Press <kbd>j</kbd> and <kbd>k</kbd>, or use <b>Next</b> and <b>Prev</b>, to read the entries one at a time.</li>
+        <li>Exceptions and errors get a red or amber badge, even when they were logged at Information level. Click <b>Exceptions</b> or <b>Errors</b> under Problems in the summary to list only those.</li>
         <li>Fields that are the same in every entry are hidden from each row and listed once in the summary. Untick <b>Hide common fields</b> to see them in every row.</li>
       </ol>
     </section>
@@ -738,10 +776,12 @@
         <li>In the log viewer, switch the toolbar from <b>List</b> to <b>Flow</b> to see the calls between Merchant, PayFuture and Provider.</li>
         <li>Solid blue arrows are requests. Dashed green arrows are responses, labelled with the time since their request and the status code. Orange arrows are provider webhooks and merchant callbacks.</li>
         <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
+        <li>A red <b>&#9888; Exception</b> box marks an exception and an amber <b>&#9888; Error</b> box marks a logged error. A red arrow is a failed response, such as <code>Unauthorized</code> or a 4xx or 5xx status. Hover over a box to see the stack trace.</li>
+        <li>Some integrations log their provider calls without a LogType. For those, arrows come from messages like "SubmitPayout request: {...}" and are marked <i>inferred</i>.</li>
         <li>Hover over an arrow to see its payload, formatted. Click the arrow to open the entry in the list, and use <b>&larr; Back to flow</b> to return to the same spot.</li>
         <li>Click a trace in the summary to see one request's flow on its own.</li>
       </ol>
-      <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Entries without one count as internal steps.</p>
+      <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Other entries count as internal steps unless they are exceptions or errors.</p>
     </section>
 
     <section class="g-page" data-page="privacy" hidden>
@@ -1460,10 +1500,11 @@
       .sort((a, b) => order.indexOf(a.f.sec) - order.indexOf(b.f.sec) || a.n - b.n)
       .map(x => x.f);
     const vals = new Map(shown.map(f => [f.path, valText(f.node)]));
+    const sev = normSev(text(pick('severity', 'level', 'severity_text', 'severitytext', 'loglevel', 'attributes.level', 'labels.level', 'labels.detected_level', 'detected_level')));
 
     return {
-      i, t, body, node: rec.node, fields: shown, vals,
-      sev: normSev(text(pick('severity', 'level', 'severity_text', 'severitytext', 'loglevel', 'attributes.level', 'labels.level', 'labels.detected_level', 'detected_level'))),
+      i, t, body, node: rec.node, fields: shown, vals, sev,
+      problem: problemOf(sev, body, vals),
       module: text(pick('attributes.module', 'module', 'attributes.sourcecontext', 'sourcecontext', 'logger', 'category')),
       ltype: text(pick('attributes.logtype', 'logtype')),
       trace: text(pick('traceid', 'trace_id', 'attributes.traceid', 'labels.traceid')),
@@ -1471,8 +1512,36 @@
     };
   }
 
+  // .NET-style type name, e.g. System.ArgumentNullException: Value cannot be null.
+  const EXC_RE = /\b((?:[A-Za-z_]\w*\.)*[A-Z]\w*Exception)\b(?::[ \t]*([^\r\n]*))?/;
+  const STACK_RE = /^[ \t]+at [\w.`<>\[\], ]+\(/m;
+
+  // Message text outside any JSON, so a field such as "ErrorCode" does not count.
+  const plainText = (body) => findJson(body, true).filter(s => !s.node).map(s => s.text).join(' ');
+
+  // Exceptions are often logged at Information level, so the message decides.
+  function problemOf(sev, body, vals) {
+    // Only text outside JSON counts: payloads such as a serialized HttpClient carry type names ending in Exception.
+    const text = plainText(body);
+    const m = text.match(EXC_RE);
+    if (m || STACK_RE.test(text)) {
+      const prefix = m ? text.slice(0, m.index).replace(/[\s:|-]*(exception)?[\s:|-]*$/i, '').trim() : '';
+      const type = m ? m[1].split('.').pop() : 'Exception';
+      return { kind: 'exception', label: [prefix, type + (m && m[2] ? ': ' + m[2].trim() : '')].filter(Boolean).join(' · ') };
+    }
+    // OpenTelemetry puts exceptions in exception.type and exception.message attributes.
+    const otel = (name) => [...vals].find(([p]) => p.toLowerCase().endsWith('exception.' + name))?.[1];
+    if (otel('type') || otel('message')) {
+      return { kind: 'exception', label: [otel('type')?.split('.').pop(), otel('message')].filter(Boolean).join(': ') };
+    }
+    if (sev === 'ERROR' || sev === 'FATAL' || /\b(error|failed|failure)\b/i.test(text)) {
+      return { kind: 'error', label: body.split(/\r?\n/)[0].slice(0, 200) };
+    }
+    return null;
+  }
+
   const LOG = { name: '', entries: [], consts: new Map(), traceIdx: new Map(), open: new Set(), curK: null, view: [],
-    f: { q: '', sev: '', mod: '', trace: '', type: '' } };
+    f: { q: '', sev: '', mod: '', trace: '', type: '', prob: '' } };
 
   // `saved` is the view state kept in sessionStorage, passed when restoring after a refresh.
   function loadLogs(text, name, saved) {
@@ -1493,8 +1562,10 @@
     }
     const traceIdx = new Map();
     for (const e of entries) if (e.trace && !traceIdx.has(e.trace)) traceIdx.set(e.trace, traceIdx.size);
+    const typedModules = new Set(entries.filter(e => FLOW_TYPES[e.ltype.toLowerCase()]).map(e => e.module));
 
-    Object.assign(LOG, { name, entries, consts, traceIdx, open: new Set(), curK: null, f: { q: '', sev: '', mod: '', trace: '', type: '' } });
+    Object.assign(LOG, { name, entries, consts, traceIdx, typedModules, open: new Set(), curK: null,
+      f: { q: '', sev: '', mod: '', trace: '', type: '', prob: '' } });
     if (saved) {
       Object.assign(LOG.f, saved.f);
       LOG.open = new Set((saved.open || []).filter(k => k < entries.length));
@@ -1651,6 +1722,10 @@
       `<h2>${esc(LOG.name)}</h2><div class="meta">${meta}</div>` +
       (srcHtml ? `<div class="source srcbox">${srcHtml}</div>` : '') +
       (mods.length <= 40 ? facet('Modules', mods.map(([v, n]) => chip('mod', v, v, n))) : '') +
+      facet('Problems', [['exception', 'Exceptions'], ['error', 'Errors']]
+        .map(([kind, label]) => [kind, label, E.filter(e => e.problem?.kind === kind).length])
+        .filter(([, , n]) => n)
+        .map(([kind, label, n]) => chip('prob', kind, label, n, `<span class="dot" style="--tc: var(${kind === 'exception' ? '--err' : '--num'})"></span>`))) +
       facet('Traces', traces) +
       facet('IDs', idChips) +
       facet('Log types', counts('ltype').map(([v, n]) => chip('type', v, v, n))) +
@@ -1676,7 +1751,7 @@
     const f = LOG.f, q = f.q.trim().toLowerCase();
     return LOG.entries.filter(e =>
       (!f.sev || e.sev === f.sev) && (!f.mod || e.module === f.mod) && (!f.trace || e.trace === f.trace) &&
-      (!f.type || e.ltype === f.type) && (!q || e.search.includes(q)));
+      (!f.type || e.ltype === f.type) && (!f.prob || e.problem?.kind === f.prob) && (!q || e.search.includes(q)));
   }
 
   function msgHtml(body, ctx) {
@@ -1684,7 +1759,22 @@
     const segs = ctx.expand ? findJson(body, true) : [{ text: body }];
     return segs.map(s => s.node
       ? `<div class="ln mj">${renderHtml(s.node, ctx, 0, false)}</div>`
-      : (s.text.trim() ? `<span>${esc(s.text.trim())}</span>` : '')).join('');
+      : (s.text.trim() ? `<span>${textHtml(s.text.trim())}</span>` : '')).join('');
+  }
+
+  // Highlights exception names, and dims framework frames so the app's own frames stand out.
+  function textHtml(text) {
+    return text.split('\n').map(line => {
+      const frame = line.match(/^(\s*)at (.*)$/);
+      if (frame) {
+        const sys = /^(System|Microsoft)\./.test(frame[2]);
+        const where = esc(frame[2]).replace(/( in )(.+?:line \d+)$/, '$1<span class="st-file">$2</span>');
+        return `${frame[1]}<span class="${sys ? 'st-sys' : 'st-app'}">at ${where}</span>`;
+      }
+      const m = line.match(EXC_RE);
+      if (!m) return esc(line);
+      return esc(line.slice(0, m.index)) + `<b class="exc">${esc(m[0])}</b>` + esc(line.slice(m.index + m[0].length));
+    }).join('\n');
   }
 
   function detailHtml(e) {
@@ -1703,12 +1793,13 @@
     const open = LOG.open.has(e.k);
     const d = e.delta;
     const dcls = d == null ? '' : d >= 1000 ? ' gap' : d >= 250 ? ' slow' : '';
-    return `<details class="entry${e.k === LOG.curK ? ' cur' : ''}" data-k="${e.k}"${e.trace ? ` style="${traceColor(e.trace)}"` : ''}${open ? ' open' : ''}>` +
+    return `<details class="entry${e.k === LOG.curK ? ' cur' : ''}${e.problem ? ' prob-' + e.problem.kind : ''}" data-k="${e.k}"${e.trace ? ` style="${traceColor(e.trace)}"` : ''}${open ? ' open' : ''}>` +
       `<summary><span class="num">${e.k + 1}</span>` +
       `<span class="time">${Number.isFinite(e.t) ? fmtTime(e.t, withDate) : ''}</span>` +
       `<span class="delta${dcls}" title="Time since the previous entry shown">${d == null ? '' : '+' + fmtDur(d)}</span>` +
       (e.sev ? `<span class="sev sev-${esc(e.sev.toLowerCase())}">${esc(e.sev)}</span>` : '') +
       (e.module ? `<span class="mod">${esc(e.module)}</span>` : '') +
+      (e.problem ? `<span class="sev ${e.problem.kind === 'exception' ? 'sev-error' : 'sev-warn'}">${e.problem.kind.toUpperCase()}</span>` : '') +
       (e.ltype ? `<span class="ltype">${esc(e.ltype)}</span>` : '') +
       `<span class="msg">${esc(e.body.replace(/\s+/g, ' ').slice(0, 400))}</span></summary>` +
       `<div class="detail">${open ? detailHtml(e) : ''}</div></details>`;
@@ -1786,8 +1877,20 @@
     if (t) return t;
     // Some callback senders log without a LogType.
     if (!e.ltype && /callback/i.test(e.module) && /\bsen[dt]\b/i.test(e.body)) return { from: 1, to: 0, kind: 'callback', inferred: true };
+    // Integrations that never log a LogType: read the call from "...request: {...}" and "...response..." messages.
+    if (!e.ltype && e.problem?.kind !== 'exception' && /integration/i.test(e.module) && !LOG.typedModules?.has(e.module)) {
+      const segs = findJson(e.body, true);
+      const text = segs.filter(s => !s.node).map(s => s.text).join(' ');
+      if (/\bresponse\b/i.test(text)) return { from: 2, to: 1, kind: 'response', inferred: true };
+      if (/\brequest\b/i.test(text) && !/\bre(cei|cie)ved\b/i.test(text) && segs.some(s => s.node)) {
+        return { from: 1, to: 2, kind: 'request', inferred: true };
+      }
+    }
     return null;
   }
+
+  const isFailStatus = (s) => /^[45]\d\d$/.test(s) ||
+    /unauthori|forbidden|denied|fail|error|invalid|timeout|bad.?request|not.?found|reject|declin|^false$/i.test(s);
 
   // Text before the first JSON block, e.g. "GetAccessToken response".
   function flowLabel(body) {
@@ -1799,6 +1902,8 @@
   const STATUS_KEYS = ['statuscode', 'responsecode', 'txnstatus', 'status', 'success'];
 
   function flowStatus(body) {
+    const tm = plainText(body).match(/status\s*code\s*[:=]?\s*"?([\w .-]+?)"?\s*(?:[|,;]|$)/i);
+    if (tm) return tm[1].trim();
     const found = new Map();
     const walk = (n, depth) => {
       if (depth > 3) return;
@@ -1844,8 +1949,9 @@
       }
       if (Number.isFinite(e.t)) lastT = e.t;
       const f = flowOf(e);
-      if (!f) { internal.push(e); continue; }
+      if (!f && !e.problem) { internal.push(e); continue; }
       if (internal.length) { rows.push({ internal }); internal = []; }
+      if (!f) { rows.push({ prob: e }); continue; }
       const key = (e.trace || '') + (f.from === 0 || f.to === 0 ? ':merchant' : ':provider');
       let latency = null;
       if (f.kind === 'request') {
@@ -1860,8 +1966,8 @@
     if (internal.length) rows.push({ internal });
 
     const el = $('flow');
-    if (!rows.some(r => r.e)) {
-      el.innerHTML = '<p class="hint">None of these entries has a request or response LogType, so there is no flow to draw. ' +
+    if (!rows.some(r => r.e || r.prob)) {
+      el.innerHTML = '<p class="hint">None of these entries has a request or response LogType, or an exception, so there is no flow to draw. ' +
         'The flow uses API-MerchantRequestReceived, API-MerchantResponseSent, API-GatewayRequestSent, ' +
         'API-GatewayResponseReceived, API-GatewayWebhookReceived and API-MerchantCallbackSent.</p>';
       return;
@@ -1881,13 +1987,22 @@
         return `<div class="frow internal"><div class="ftime"></div><div class="flane">` +
           `<button class="ibox" data-k="${xs[0].k}" title="${esc(tip)}">${xs.length} internal step${xs.length === 1 ? '' : 's'}${span}</button></div></div>`;
       }
+      if (r.prob) {
+        const e = r.prob, p = e.problem;
+        return `<div class="frow prow"><div class="ftime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t, withDate) : ''}</div><div class="flane">` +
+          `<button class="pbox p-${p.kind}" data-k="${e.k}" data-meta="${p.kind}" aria-label="#${e.k + 1} ${p.kind}">` +
+          `<span class="pmark">${p.kind === 'exception' ? '⚠ Exception' : '⚠ Error'}</span>` +
+          `<span class="plabel">${esc(p.label)}</span>` +
+          `<span class="mtime">${Number.isFinite(e.t) ? fmtTime(e.t) : ''}</span></button></div></div>`;
+      }
       const { e, f, latency } = r;
       const left = Math.min(LANE_X[f.from], LANE_X[f.to]);
       const width = Math.abs(LANE_X[f.from] - LANE_X[f.to]);
       const status = f.kind === 'response' || f.kind === 'webhook' ? flowStatus(e.body) : '';
+      const fail = (status && isFailStatus(status)) || !!e.problem;
       const meta = [f.kind + (f.inferred ? ' (inferred)' : ''), latency != null ? fmtDur(latency) : '', status].filter(Boolean).join(' · ');
       return `<div class="frow"><div class="ftime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t, withDate) : ''}</div><div class="flane">` +
-        `<button class="arrow k-${f.kind} ${f.to > f.from ? 'to-right' : 'to-left'}" data-k="${e.k}" style="left:${left}%;width:${width}%" ` +
+        `<button class="arrow k-${f.kind}${fail ? ' fail' : ''} ${f.to > f.from ? 'to-right' : 'to-left'}" data-k="${e.k}" style="left:${left}%;width:${width}%" ` +
         `aria-label="#${e.k + 1} ${esc(e.ltype || e.module)}">` +
         `<span class="alabel">${esc(flowLabel(e.body))}</span>` +
         `<span class="ameta"><span class="mtime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t) + ' · ' : ''}</span>${esc(meta)}</span>` +
@@ -1896,7 +2011,7 @@
 
     el.innerHTML = `<div class="fhead"><div></div><div class="flane">${head}</div></div>${body}` +
       '<div class="flegend"><span><i></i>request</span><span class="lr"><i></i>response, with time since its request</span>' +
-      '<span class="lw"><i></i>webhook or callback</span><span>Hover an arrow to see its payload. Click it to open the entry.</span></div>';
+      '<span class="lw"><i></i>webhook or callback</span><span class="lx"><i></i>failed response or exception</span><span>Hover an arrow to see its payload. Click it to open the entry.</span></div>';
   }
 
   // ---------- flow popover ----------
@@ -1913,7 +2028,7 @@
     if (popK !== k) {
       popK = k;
       const ctx = { expand: expandBox.checked, nested: 0 };
-      const meta = btn.querySelector('.ameta')?.textContent.replace(/^.*?\d\d:\d\d:\d\d\.\d{3} \u00b7 /, '') || '';
+      const meta = btn.dataset.meta || btn.querySelector('.ameta')?.textContent.replace(/^.*?\d\d:\d\d:\d\d\.\d{3} \u00b7 /, '') || '';
       pop.innerHTML =
         `<div class="pop-head"><span class="num">#${e.k + 1}</span>` +
         `<span class="time">${Number.isFinite(e.t) ? fmtTime(e.t) : ''}</span>` +
@@ -1948,15 +2063,15 @@
 
   const flowEl = $('flow');
   flowEl.addEventListener('mouseover', (e) => {
-    const b = e.target.closest('.arrow');
+    const b = e.target.closest('.arrow, .pbox');
     if (b && canHover) showPop(b);
   });
   flowEl.addEventListener('mouseout', (e) => {
-    const b = e.target.closest('.arrow');
+    const b = e.target.closest('.arrow, .pbox');
     if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(180);
   });
   flowEl.addEventListener('focusin', (e) => {
-    const b = e.target.closest('.arrow');
+    const b = e.target.closest('.arrow, .pbox');
     if (b) showPop(b);
   });
   flowEl.addEventListener('focusout', (e) => {
@@ -1980,7 +2095,7 @@
   window.addEventListener('resize', followAnchor);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) hidePop(); });
   document.addEventListener('click', (e) => {
-    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.arrow')) hidePop();
+    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.arrow, .pbox')) hidePop();
   });
 
   // ---------- back to flow ----------
@@ -2029,7 +2144,7 @@
   $('flow').addEventListener('click', (e) => {
     const b = e.target.closest('[data-k]');
     if (!b) return;
-    if (!canHover && b.classList.contains('arrow') && popK !== +b.dataset.k) { showPop(b); return; }
+    if (!canHover && b.matches('.arrow, .pbox') && popK !== +b.dataset.k) { showPop(b); return; }
     goToEntry(+b.dataset.k);
   });
   setMode(store.get('opt.logMode'));
