@@ -25,6 +25,7 @@
     --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
     --indent: 2ch;
     --code-size: 13px;
+    --t0: #2457c5; --t1: #c2410c; --t2: #15803d; --t3: #9333ea; --t4: #be123c; --t5: #0e7490; --t6: #a16207; --t7: #4f46e5;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -44,6 +45,7 @@
       --err: #ff8a80;
       --badge-bg: #26324d;
       --btn-hover: #282a26;
+      --t0: #7ea4ff; --t1: #fb923c; --t2: #4ade80; --t3: #c084fc; --t4: #fb7185; --t5: #22d3ee; --t6: #facc15; --t7: #a5b4fc;
       color-scheme: dark;
     }
   }
@@ -63,6 +65,7 @@
     --err: #ff8a80;
     --badge-bg: #26324d;
     --btn-hover: #282a26;
+    --t0: #7ea4ff; --t1: #fb923c; --t2: #4ade80; --t3: #c084fc; --t4: #fb7185; --t5: #22d3ee; --t6: #facc15; --t7: #a5b4fc;
     color-scheme: dark;
   }
 
@@ -112,7 +115,13 @@
   .theme-btn[aria-checked="true"] .track { background: var(--accent); }
   .theme-btn[aria-checked="true"] .thumb { transform: translateX(14px); }
 
-  main {
+  [hidden] { display: none !important; }
+
+  .tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; padding: 2px; gap: 2px; }
+  .tabs button { border: 0; padding: 3px 11px; border-radius: 5px; }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--panel); }
+
+  #fmtView {
     flex: 1;
     min-height: 0;
     display: grid;
@@ -233,21 +242,180 @@
   }
   .status.error { color: var(--err); }
   .status.ok { color: var(--str); }
+  .status button { margin-left: 8px; font-size: 12px; padding: 1px 8px; }
+
+  .source {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 18px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--badge-bg);
+    font-size: 12.5px;
+  }
+  .source .fl { color: var(--muted); margin-right: 5px; }
+  .source b { font-weight: 600; overflow-wrap: anywhere; }
+  .source .app b { font-size: 14px; color: var(--accent); }
+  .srcbox { border: 0; border-radius: 6px; margin: 4px 0 8px; }
+  .hint { color: var(--muted); font: 12.5px system-ui, sans-serif; margin: 6px 0 0; }
+  .entry { scroll-margin-top: 96px; }
+
+  /* ---------- log viewer ---------- */
+  #logView {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px 16px 24px;
+  }
+  .drop {
+    max-width: 560px;
+    margin: 6vh auto 0;
+    padding: 32px 24px;
+    text-align: center;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: var(--panel);
+  }
+  .drop h2 { font-size: 16px; margin: 0 0 6px; }
+  .drop p { margin: 6px 0; color: var(--muted); }
+  .drop .err { color: var(--err); }
+  .filebtn {
+    display: inline-block;
+    margin: 10px 0 4px;
+    padding: 6px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .filebtn:hover { background: var(--btn-hover); }
+  .filebtn input { display: none; }
+  body.dragging main:not([hidden]) { outline: 2px dashed var(--accent); outline-offset: -6px; }
+
+  .summary {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .summary h2 { font-size: 15px; margin: 0 0 2px; overflow-wrap: anywhere; }
+  .summary .meta { color: var(--muted); margin-bottom: 8px; }
+  .facet { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; margin: 5px 0; }
+  .facet > .fl { color: var(--muted); font-size: 12.5px; min-width: 76px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12.5px;
+    padding: 1px 8px;
+    border-radius: 11px;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+  .chip .c { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .chip.on { border-color: var(--accent); background: var(--badge-bg); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); flex: none; }
+  .common { margin-top: 6px; }
+  .common summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+
+  .logbar {
+    position: sticky;
+    top: -12px;
+    z-index: 2;
+    background: var(--bg);
+    border: 0;
+    padding: 8px 0;
+    margin-bottom: 4px;
+  }
+  .logbar input[type="search"] {
+    flex: 1 1 220px;
+    min-width: 0;
+    font: inherit;
+    font-size: 13px;
+    color: var(--text);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 9px;
+  }
+  .logbar select { max-width: 190px; }
+  .count { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+
+  .entry {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--tc, var(--border));
+    border-radius: 6px;
+    margin-bottom: 4px;
+  }
+  .entry.cur { box-shadow: 0 0 0 2px var(--accent-soft); }
+  .entry > summary {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 5px 10px;
+    cursor: pointer;
+    list-style: none;
+    font: var(--code-size)/1.5 var(--mono);
+  }
+  .entry > summary::-webkit-details-marker { display: none; }
+  .entry > summary::before { content: "\25B8"; color: var(--muted); font-size: 11px; }
+  .entry[open] > summary::before { content: "\25BE"; }
+  .entry > summary:hover { background: var(--btn-hover); }
+  .num { color: var(--muted); min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+  .time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .delta { color: var(--muted); min-width: 8ch; white-space: nowrap; font-size: .9em; font-variant-numeric: tabular-nums; }
+  .delta.slow { color: var(--num); }
+  .delta.gap { color: var(--err); font-weight: 600; }
+  .sev { font: 600 11px/1.6 system-ui, sans-serif; padding: 0 5px; border-radius: 4px; background: var(--btn-hover); color: var(--muted); }
+  .sev-error, .sev-fatal { background: var(--err); color: var(--panel); }
+  .sev-warn { background: var(--num); color: var(--panel); }
+  .sev-info { color: var(--accent); background: var(--badge-bg); }
+  .mod { color: var(--key); white-space: nowrap; }
+  .ltype { font: 600 11px/1.6 system-ui, sans-serif; color: var(--str); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .detail { padding: 6px 14px 12px 3.4ch; border-top: 1px solid var(--border); font: var(--code-size)/1.5 var(--mono); }
+  .dmsg { white-space: pre-wrap; overflow-wrap: anywhere; padding: 4px 0 8px; }
+  .dmsg .mj { margin: 2px 0 2px 2ch; }
+  .fields { border-collapse: collapse; width: 100%; }
+  .fields th, .fields td { text-align: left; vertical-align: top; padding: 2px 8px 2px 0; }
+  .fields th { color: var(--key); font-weight: normal; white-space: nowrap; width: 1%; padding-right: 3ch; }
+  .fields tr.sec th {
+    color: var(--muted);
+    font: 600 11px/1.6 system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding-top: 8px;
+  }
+  .dactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-family: system-ui, sans-serif; }
 
   @media (max-width: 860px) {
     html, body { height: auto; }
     header { flex-wrap: wrap; gap: 4px 16px; }
     header p { flex-basis: 100%; order: 3; }
-    main { grid-template-columns: minmax(0, 1fr); }
+    #fmtView { grid-template-columns: minmax(0, 1fr); }
     .pane { height: 70vh; }
     .pane:first-child { height: 40vh; }
+    #logView { overflow: visible; }
+    .logbar { top: 0; }
+    .entry > summary { flex-wrap: wrap; gap: 2px 8px; }
+    .msg { flex-basis: 100%; }
+    .fields th { white-space: normal; width: 34%; padding-right: 8px; }
   }
 </style>
 </head>
 <body>
 <header>
   <h1>JSON formatter</h1>
-  <p>Formats JSON, and also the JSON inside string values such as <code>"Message": "request: {\"a\":1}"</code>. Everything runs in this page. Nothing you paste is sent anywhere.</p>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="fmtView" aria-selected="true">Formatter</button>
+    <button role="tab" data-view="logView" aria-selected="false">Log viewer</button>
+  </nav>
+  <p>Formats JSON, including JSON inside string values, and reads Grafana log exports. Everything runs in this page. Nothing you paste or open is uploaded.</p>
   <div class="tools">
     <div class="font-ctl" role="group" aria-label="Font size">
       <button id="fontDown" title="Smaller text (Ctrl+Alt+-)" aria-label="Smaller text">A&minus;</button>
@@ -261,7 +429,7 @@
   </div>
 </header>
 
-<main>
+<main id="fmtView">
   <section class="pane">
     <div class="bar">
       <span class="label">Input</span>
@@ -285,9 +453,42 @@
       <button id="expandAll">Expand</button>
       <button id="copy" class="primary">Copy</button>
     </div>
+    <div id="source" class="source" hidden></div>
     <div id="out" class="out"></div>
     <div id="status" class="status"></div>
   </section>
+</main>
+
+<main id="logView" hidden>
+  <div id="drop" class="drop">
+    <h2>Open a log export</h2>
+    <p>A Grafana logs panel CSV export, a JSON array of log entries, or newline-delimited JSON.</p>
+    <label class="filebtn"><input type="file" id="file" accept=".csv,.json,.ndjson,.jsonl,.log,.txt"> Choose file</label>
+    <p>or drop the file anywhere on this page</p>
+    <p id="dropErr" class="err" hidden></p>
+  </div>
+
+  <div id="logUi" hidden>
+    <section id="summary" class="summary"></section>
+    <div class="bar logbar">
+      <input type="search" id="q" placeholder="Search messages and fields" aria-label="Search">
+      <select id="fSev" aria-label="Severity"></select>
+      <select id="fMod" aria-label="Module"></select>
+      <select id="fTrace" aria-label="Trace"></select>
+      <select id="sort" aria-label="Order">
+        <option value="asc">Oldest first</option>
+        <option value="desc">Newest first</option>
+      </select>
+      <label class="check" title="Hide fields that have the same value in every entry"><input type="checkbox" id="hideCommon" checked> Hide common fields</label>
+      <button id="prev" title="Previous entry (k)">&uarr; Prev</button>
+      <button id="next" title="Next entry (j)">&darr; Next</button>
+      <button id="openAll">Expand all</button>
+      <button id="closeAll">Collapse all</button>
+      <button id="newFile">Open another file</button>
+      <span id="count" class="count"></span>
+    </div>
+    <div id="list"></div>
+  </div>
 </main>
 
 <script>
@@ -406,16 +607,18 @@
     return node;
   }
 
-  // Splits text into plain-text and JSON object/array segments.
-  function findJson(text) {
+  // Splits text into plain-text and JSON object/array segments. With `quoted`, a "..." literal
+  // whose content is JSON also counts, as in: Data : "{\"a\":1}".
+  function findJson(text, quoted) {
     const segs = [];
     let last = 0;
     let budget = 5e6; // stops quadratic rescans on large broken input
     for (let i = 0; i < text.length; i++) {
       const c = text[i];
-      if (c !== '{' && c !== '[') continue;
+      if (c !== '{' && c !== '[' && !(quoted && c === '"')) continue;
       try {
         const { node, end } = parseAt(text, i);
+        if (node.t === 'str' && !embedded(node, 1)) { i = end - 1; continue; }
         if (i > last) segs.push({ text: text.slice(last, i) });
         segs.push({ node });
         last = end;
@@ -524,6 +727,44 @@
 
   let result = null; // { root } or { segs }
 
+  // Where a log entry came from. Flattened names cover Grafana CSV columns pasted as JSON.
+  const SOURCE_KEYS = [
+    ['Application', ['application', 'attributes_application', 'applicationname', 'application_name', 'app', 'app_name']],
+    ['Module', ['module', 'attributes_module']],
+    ['Transaction ID', ['transactionid', 'attributes_transactionid', 'transaction_id', 'txnid']],
+    ['Merchant ID', ['merchantid', 'attributes_merchantid', 'merchant_id']],
+    ['Service', ['service.name', 'resources_service_name', 'service_name', 'k8s.deployment.name']],
+    ['Environment', ['deployment.environment', 'resources_deployment_environment', 'deployment_environment', 'environment', 'env']],
+    ['Version', ['service.version', 'resources_service_version']]
+  ];
+
+  function sourceInfo(root) {
+    const found = new Map();
+    const walk = (n, depth) => {
+      if (n.t !== 'obj' || depth > 4) return;
+      for (const [k, v] of n.entries) {
+        const kl = k.toLowerCase();
+        if ((v.t === 'str' && v.v.trim()) || v.t === 'num') { if (!found.has(kl)) found.set(kl, valText(v)); }
+        else walk(v, depth + 1);
+      }
+    };
+    walk(root, 0);
+    const out = [];
+    for (const [label, keys] of SOURCE_KEYS) {
+      const k = keys.find(x => found.has(x));
+      if (k) out.push([label, found.get(k)]);
+    }
+    return out.some(([l]) => l === 'Application' || l === 'Module' || l === 'Service') ? out : [];
+  }
+
+  function renderSource(node) {
+    const el = $('source');
+    const info = node ? sourceInfo(node) : [];
+    el.hidden = !info.length;
+    el.innerHTML = info.map(([label, v]) =>
+      `<span class="${label === 'Application' || label === 'Module' ? 'app' : ''}"><span class="fl">${label}</span><b>${esc(v)}</b></span>`).join('');
+  }
+
   function setStatus(text, kind) {
     status.textContent = text;
     status.className = 'status' + (kind ? ' ' + kind : '');
@@ -544,6 +785,7 @@
     const text = input.value;
     const ctx = { expand: expandBox.checked, nested: 0 };
     document.documentElement.style.setProperty('--indent', indentSel.value === 'tab' ? '4ch' : indentSel.value + 'ch');
+    renderSource(null);
 
     if (!text.trim()) { result = null; out.innerHTML = ''; setStatus(''); return; }
 
@@ -552,6 +794,7 @@
 
     if (root) {
       result = { root };
+      renderSource(root);
       out.innerHTML = `<div class="ln">${renderHtml(root, ctx, 0, false)}</div>`;
       setStatus(ctx.nested
         ? `Valid JSON. Expanded ${ctx.nested} string${ctx.nested === 1 ? '' : 's'} that held JSON.`
@@ -559,10 +802,22 @@
       return;
     }
 
-    const segs = findJson(text);
+    if (looksLikeCsv(text)) {
+      result = null;
+      out.innerHTML = '';
+      setStatus('This looks like a CSV log export.');
+      const btn = document.createElement('button');
+      btn.textContent = 'Open in log viewer';
+      btn.addEventListener('click', () => loadLogs(text, 'Pasted CSV'));
+      status.appendChild(btn);
+      return;
+    }
+
+    const segs = findJson(text, true);
     const blocks = segs.filter(x => x.node).length;
     if (blocks) {
       result = { segs };
+      renderSource(segs.find(x => x.node && x.node.t === 'obj')?.node);
       out.innerHTML = segs.map(x => x.node
         ? `<div class="ln">${renderHtml(x.node, ctx, 0, false)}</div>`
         : (x.text.trim() ? `<div class="raw">${esc(x.text.trim())}</div>` : '')).join('');
@@ -623,10 +878,7 @@
   $('collapse').addEventListener('click', () => setAll(true));
   $('expandAll').addEventListener('click', () => setAll(false));
 
-  $('copy').addEventListener('click', async (e) => {
-    const text = outputText();
-    if (!text) return;
-    const btn = e.currentTarget;
+  async function copyText(text, btn) {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -637,8 +889,14 @@
       document.execCommand('copy');
       ta.remove();
     }
+    const label = btn.textContent;
     btn.textContent = 'Copied';
-    setTimeout(() => { btn.textContent = 'Copy'; }, 1200);
+    setTimeout(() => { btn.textContent = label; }, 1200);
+  }
+
+  $('copy').addEventListener('click', (e) => {
+    const text = outputText();
+    if (text) copyText(text, e.currentTarget);
   });
 
   $('clear').addEventListener('click', () => { input.value = ''; run(); input.focus(); });
@@ -704,6 +962,550 @@
     if (!(e.ctrlKey || e.metaKey) || !e.altKey) return;
     if (e.key === '=' || e.key === '+') { e.preventDefault(); applyFont(fontSize + 1); }
     else if (e.key === '-') { e.preventDefault(); applyFont(fontSize - 1); }
+  });
+
+  // ---------- log viewer ----------
+
+  function looksLikeCsv(text) {
+    const nl = text.indexOf('\n');
+    const first = (nl < 0 ? text : text.slice(0, nl)).replace(/^﻿/, '').trim();
+    return /^"[^"]*"(,"[^"]*")+$/.test(first) && /"(Line|tsNs|body|Date|Time|timestamp|message)"/i.test(first);
+  }
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (quoted) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; } else quoted = false;
+        } else field += c;
+      } else if (c === '"') quoted = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(field); rows.push(row); row = []; field = '';
+      } else field += c;
+    }
+    if (field || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  const norm = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const nsToMs = (ns) => Number(BigInt(ns) / 1000n) / 1000;
+
+  function valText(node) {
+    switch (node.t) {
+      case 'str': return node.v;
+      case 'num': case 'bool': return node.raw;
+      case 'null': return 'null';
+      default: return renderText(node, { expand: false, unit: '' }, 0, 0).replace(/\n/g, '');
+    }
+  }
+
+  // Leaf fields of a record. Nested objects become dotted keys under their top-level section.
+  function flatten(root) {
+    const out = [];
+    const walk = (node, sec, key) => {
+      for (const [k, v] of node.entries) {
+        const kk = key ? key + '.' + k : k;
+        if (v.t === 'obj' && v.entries.length) walk(v, sec, kk);
+        else out.push({ sec, key: kk, path: sec ? sec + '.' + kk : kk, node: v });
+      }
+    };
+    for (const [k, v] of root.entries) {
+      if (v.t === 'obj' && v.entries.length) walk(v, k, '');
+      else out.push({ sec: '', key: k, path: k, node: v });
+    }
+    return out;
+  }
+
+  function toMs(node) {
+    const s = valText(node);
+    if (/^\d{10,19}(\.\d+)?$/.test(s)) {
+      const n = Number(s);
+      if (s.length >= 19) return nsToMs(s.split('.')[0]);
+      if (n > 1e14) return n / 1000;
+      if (n > 1e11) return n;
+      return n * 1000;
+    }
+    return Date.parse(s);
+  }
+
+  function normSev(s) {
+    const v = s.toLowerCase();
+    if (!v) return '';
+    if (v.startsWith('fatal') || v.startsWith('crit')) return 'FATAL';
+    if (v.startsWith('err')) return 'ERROR';
+    if (v.startsWith('warn')) return 'WARN';
+    if (v.startsWith('info')) return 'INFO';
+    if (v.startsWith('debug') || v === 'dbg') return 'DEBUG';
+    if (v.startsWith('trace') || v.startsWith('verbose')) return 'TRACE';
+    return s.toUpperCase();
+  }
+
+  // Grafana CSV: the Line column holds the full entry; other columns repeat it flattened, plus labels.
+  function csvRecords(text) {
+    const rows = parseCsv(text.replace(/^﻿/, ''));
+    const head = (rows.shift() || []).map(h => h.trim());
+    const col = (name) => head.findIndex(h => h.toLowerCase() === name.toLowerCase());
+    const iLine = col('Line'), iNs = col('tsNs'), iDate = col('Date');
+    const skip = new Set([iLine, iNs, iDate, col('Time'), col('id')]);
+    return rows.filter(r => r.some(v => v !== '')).map(r => {
+      let node = null, labels = [];
+      if (iLine >= 0) {
+        try { const n = parseDocument(r[iLine]); if (n.t === 'obj') node = n; } catch {}
+      }
+      if (node) {
+        const known = new Set(flatten(node).map(f => norm(f.path)));
+        labels = head.map((h, k) => [h, r[k] ?? ''])
+          .filter(([h, v], k) => !skip.has(k) && v !== '' && !known.has(norm(h)));
+      } else {
+        node = { t: 'obj', entries: head.map((h, k) => [h, { t: 'str', v: r[k] ?? '' }]) };
+      }
+      let ts = NaN;
+      if (iNs >= 0 && /^\d+$/.test(r[iNs])) ts = nsToMs(r[iNs]);
+      else if (iDate >= 0) ts = Date.parse(r[iDate]);
+      return { node, labels, ts };
+    });
+  }
+
+  function readRecords(text) {
+    if (looksLikeCsv(text)) return csvRecords(text);
+    const trimmed = text.replace(/^﻿/, '').trim();
+    try {
+      const root = parseDocument(trimmed);
+      if (root.t === 'arr' && root.items.every(n => n.t === 'obj')) return root.items.map(node => ({ node, labels: [] }));
+      if (root.t === 'obj') return [{ node: root, labels: [] }];
+    } catch {}
+    const lines = trimmed.split(/\r?\n/);
+    const recs = [];
+    lines.forEach((line, n) => {
+      if (!line.trim()) return;
+      let node = null;
+      try { node = parseDocument(line); } catch {}
+      if (!node || node.t !== 'obj') {
+        throw new Error(`Line ${n + 1} is not a JSON object, so the file is not a CSV export, a JSON array or newline-delimited JSON.`);
+      }
+      recs.push({ node, labels: [] });
+    });
+    return recs;
+  }
+
+  const SECTION_LAST = 'labels';
+
+  function makeEntry(rec, i) {
+    const fields = flatten(rec.node);
+    for (const [k, v] of rec.labels) fields.push({ sec: SECTION_LAST, key: k, path: SECTION_LAST + '.' + k, node: { t: 'str', v } });
+    const by = new Map(fields.map(f => [f.path.toLowerCase(), f]));
+    const pick = (...paths) => {
+      for (const p of paths) {
+        const f = by.get(p);
+        if (f && f.node.t !== 'null' && valText(f.node) !== '') return f;
+      }
+      return null;
+    };
+    const text = (f) => (f ? valText(f.node) : '');
+
+    const bodyF = pick('body', 'message', 'msg', 'attributes.message', 'log', 'line');
+    const body = text(bodyF);
+    let t = rec.ts;
+    if (!Number.isFinite(t)) {
+      const tf = pick('timestamp', '@timestamp', 'time', 'ts', 'date', 'datetime', 'labels.date');
+      t = tf ? toMs(tf.node) : NaN;
+    }
+
+    // Top-level fields first, then each object in file order, then Grafana labels.
+    const order = [''];
+    for (const f of fields) if (!order.includes(f.sec) && f.sec !== SECTION_LAST) order.push(f.sec);
+    order.push(SECTION_LAST);
+    const shown = fields
+      .filter(f => f !== bodyF && f.node.t !== 'null' && valText(f.node) !== '' && !(f.node.t === 'str' && f.node.v === body))
+      .map((f, n) => ({ f, n }))
+      .sort((a, b) => order.indexOf(a.f.sec) - order.indexOf(b.f.sec) || a.n - b.n)
+      .map(x => x.f);
+    const vals = new Map(shown.map(f => [f.path, valText(f.node)]));
+
+    return {
+      i, t, body, node: rec.node, fields: shown, vals,
+      sev: normSev(text(pick('severity', 'level', 'severity_text', 'severitytext', 'loglevel', 'attributes.level', 'labels.level', 'labels.detected_level', 'detected_level'))),
+      module: text(pick('attributes.module', 'module', 'attributes.sourcecontext', 'sourcecontext', 'logger', 'category')),
+      ltype: text(pick('attributes.logtype', 'logtype')),
+      trace: text(pick('traceid', 'trace_id', 'attributes.traceid', 'labels.traceid')),
+      search: (body + '\n' + [...vals].map(([p, v]) => p + '=' + v).join('\n')).toLowerCase()
+    };
+  }
+
+  const LOG = { name: '', entries: [], consts: new Map(), traceIdx: new Map(), open: new Set(), curK: null, view: [],
+    f: { q: '', sev: '', mod: '', trace: '', type: '' } };
+
+  function loadLogs(text, name) {
+    let records;
+    try { records = readRecords(text); } catch (e) { showDropError(e.message); return; }
+    if (!records.length) { showDropError('No log entries found in this file.'); return; }
+
+    const entries = records.map(makeEntry);
+    if (entries.every(e => Number.isFinite(e.t))) entries.sort((a, b) => a.t - b.t || a.i - b.i);
+    entries.forEach((e, k) => { e.k = k; });
+
+    const consts = new Map();
+    if (entries.length > 1) {
+      for (const f of entries[0].fields) {
+        const v = entries[0].vals.get(f.path);
+        if (entries.every(e => e.vals.get(f.path) === v)) consts.set(f.path, f);
+      }
+    }
+    const traceIdx = new Map();
+    for (const e of entries) if (e.trace && !traceIdx.has(e.trace)) traceIdx.set(e.trace, traceIdx.size);
+
+    Object.assign(LOG, { name, entries, consts, traceIdx, open: new Set(), curK: null, f: { q: '', sev: '', mod: '', trace: '', type: '' } });
+    $('q').value = '';
+    $('sort').value = 'asc';
+    $('dropErr').hidden = true;
+    $('drop').hidden = true;
+    $('logUi').hidden = false;
+    fillSelects();
+    renderSummary();
+    renderList();
+    showView('logView');
+    $('logView').scrollTop = 0;
+  }
+
+  function showDropError(msg) {
+    $('dropErr').textContent = msg;
+    $('dropErr').hidden = false;
+    $('drop').hidden = false;
+    $('logUi').hidden = true;
+    showView('logView');
+  }
+
+  // ---------- log formatting helpers ----------
+
+  const pad = (n, w = 2) => String(n).padStart(w, '0');
+  const sameDay = () => {
+    const ts = LOG.entries.map(e => e.t).filter(Number.isFinite);
+    return !ts.length || new Date(Math.min(...ts)).toDateString() === new Date(Math.max(...ts)).toDateString();
+  };
+  const fmtDate = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  function fmtTime(ms, withDate) {
+    const d = new Date(ms);
+    const t = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}.${pad(d.getMilliseconds(), 3)}`;
+    return withDate ? fmtDate(ms) + ' ' + t : t;
+  }
+  function fmtDur(ms) {
+    if (ms < 1) return ms.toFixed(2) + ' ms';
+    if (ms < 100) return ms.toFixed(1) + ' ms';
+    if (ms < 1000) return Math.round(ms) + ' ms';
+    if (ms < 60000) return (ms / 1000).toFixed(2) + ' s';
+    const s = Math.round(ms / 1000);
+    if (s < 3600) return `${Math.floor(s / 60)}m ${pad(s % 60)}s`;
+    return `${Math.floor(s / 3600)}h ${pad(Math.floor(s / 60) % 60)}m`;
+  }
+  function tzLabel() {
+    const off = -new Date().getTimezoneOffset();
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    return `${zone} (UTC${off >= 0 ? '+' : '-'}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)})`;
+  }
+  const shortId = (id) => id.length > 18 ? id.slice(0, 8) + '…' + id.slice(-6) : id;
+  const traceColor = (id) => `--tc: var(--t${LOG.traceIdx.get(id) % 8})`;
+
+  function counts(key) {
+    const m = new Map();
+    for (const e of LOG.entries) if (e[key]) m.set(e[key], (m.get(e[key]) || 0) + 1);
+    return [...m].sort((a, b) => b[1] - a[1]);
+  }
+
+  // Transaction and merchant IDs are already in the source line.
+  const ID_KEY = /(^|\.)(merchant_?ref_?no|order_?id|payment_?id|payout_?id|unique_?reference|reference\d?|utr)$/i;
+
+  function fieldsTable(fields, ctx) {
+    let html = '', sec = null;
+    for (const f of fields) {
+      if (f.sec !== sec) { sec = f.sec; html += `<tr class="sec"><th colspan="2">${esc(sec || 'entry')}</th></tr>`; }
+      html += `<tr><th>${esc(f.key)}</th><td class="ln">${renderHtml(f.node, ctx, 0, false)}</td></tr>`;
+    }
+    return html ? `<table class="fields">${html}</table>` : '';
+  }
+
+  // ---------- log rendering ----------
+
+  function chip(kind, value, label, count, extra = '', style = '') {
+    const on = LOG.f[kind] === value ? ' on' : '';
+    return `<button class="chip${on}" data-kind="${kind}" data-v="${esc(value)}" title="${esc(value)}"${style ? ` style="${style}"` : ''}>` +
+      `${extra}${esc(label)}${count != null ? `<span class="c">${count}</span>` : ''}</button>`;
+  }
+  const facet = (label, chips) => chips.length ? `<div class="facet"><span class="fl">${label}</span>${chips.join('')}</div>` : '';
+
+  function renderSummary() {
+    const E = LOG.entries;
+    const ts = E.map(e => e.t).filter(Number.isFinite);
+    let meta = `${E.length} entr${E.length === 1 ? 'y' : 'ies'}`;
+    if (ts.length) {
+      const a = Math.min(...ts), b = Math.max(...ts);
+      meta += ` · ${fmtDate(a)} ${fmtTime(a)} to ${fmtTime(b, !sameDay())} · spans ${fmtDur(b - a)} · times in ${esc(tzLabel())}`;
+    }
+
+    const traces = [...LOG.traceIdx.keys()].map(id => {
+      const list = E.filter(e => e.trace === id);
+      const tt = list.map(e => e.t).filter(Number.isFinite);
+      const span = tt.length > 1 ? ' · ' + fmtDur(Math.max(...tt) - Math.min(...tt)) : '';
+      return chip('trace', id, shortId(id) + span, list.length, '<span class="dot"></span>', traceColor(id));
+    });
+
+    const ids = new Map();
+    for (const e of E) for (const [p, v] of e.vals) {
+      if (!ID_KEY.test(p)) continue;
+      if (!ids.has(p)) ids.set(p, new Map());
+      ids.get(p).set(v, (ids.get(p).get(v) || 0) + 1);
+    }
+    const idChips = [];
+    for (const [p, vals] of ids) {
+      if (vals.size > 12) continue;
+      const key = p.split('.').pop();
+      for (const [v, n] of vals) idChips.push(chip('q', v, `${key} ${v}`, n));
+    }
+
+    const src = new Map();
+    for (const e of E) {
+      e.src = e.src || sourceInfo(e.node);
+      for (const [label, v] of e.src) {
+        if (label === 'Module') continue;
+        if (!src.has(label)) src.set(label, new Map());
+        src.get(label).set(v, (src.get(label).get(v) || 0) + 1);
+      }
+    }
+    const srcHtml = [...src].map(([label, vals]) =>
+      `<span class="${label === 'Application' ? 'app' : ''}"><span class="fl">${label}</span>` +
+      (label.endsWith(' ID')
+        ? [...vals].map(([v, n]) => chip('q', v, v, n)).join(' ')
+        : [...vals].map(([v, n]) => `<b>${esc(v)}</b>${vals.size > 1 || n < E.length ? ` <span class="fl">(${n})</span>` : ''}`).join(', ')) +
+      '</span>').join('');
+
+    const mods = counts('module');
+    const common = [...LOG.consts.values()];
+    $('summary').innerHTML =
+      `<h2>${esc(LOG.name)}</h2><div class="meta">${meta}</div>` +
+      (srcHtml ? `<div class="source srcbox">${srcHtml}</div>` : '') +
+      (mods.length <= 40 ? facet('Modules', mods.map(([v, n]) => chip('mod', v, v, n))) : '') +
+      facet('Traces', traces) +
+      facet('IDs', idChips) +
+      facet('Log types', counts('ltype').map(([v, n]) => chip('type', v, v, n))) +
+      facet('Severity', counts('sev').map(([v, n]) => chip('sev', v, v, n))) +
+      (common.length
+        ? `<details class="common"><summary>${common.length} field${common.length === 1 ? ' has' : 's have'} the same value in every entry</summary>` +
+          fieldsTable(common, { expand: expandBox.checked, nested: 0 }) + '</details>'
+        : '');
+  }
+
+  function fillSelects() {
+    const opts = (all, list, label = (v) => v) => `<option value="">${all}</option>` +
+      list.map(([v, n]) => `<option value="${esc(v)}">${esc(label(v))} (${n})</option>`).join('');
+    $('fSev').innerHTML = opts('All severities', counts('sev'));
+    $('fMod').innerHTML = opts('All modules', counts('module'));
+    $('fTrace').innerHTML = opts('All traces', [...LOG.traceIdx.keys()].map(id => [id, LOG.entries.filter(e => e.trace === id).length]), shortId);
+    $('fSev').hidden = $('fSev').options.length < 3;
+    $('fMod').hidden = $('fMod').options.length < 2;
+    $('fTrace').hidden = $('fTrace').options.length < 2;
+  }
+
+  function filtered() {
+    const f = LOG.f, q = f.q.trim().toLowerCase();
+    return LOG.entries.filter(e =>
+      (!f.sev || e.sev === f.sev) && (!f.mod || e.module === f.mod) && (!f.trace || e.trace === f.trace) &&
+      (!f.type || e.ltype === f.type) && (!q || e.search.includes(q)));
+  }
+
+  function msgHtml(body, ctx) {
+    if (!body) return '';
+    const segs = ctx.expand ? findJson(body, true) : [{ text: body }];
+    return segs.map(s => s.node
+      ? `<div class="ln mj">${renderHtml(s.node, ctx, 0, false)}</div>`
+      : (s.text.trim() ? `<span>${esc(s.text.trim())}</span>` : '')).join('');
+  }
+
+  function detailHtml(e) {
+    const ctx = { expand: expandBox.checked, nested: 0 };
+    const fields = $('hideCommon').checked ? e.fields.filter(f => !LOG.consts.has(f.path)) : e.fields;
+    const hidden = e.fields.length - fields.length;
+    return `<div class="dmsg">${msgHtml(e.body, ctx)}</div>` +
+      fieldsTable(fields, ctx) +
+      (hidden ? `<p class="hint">${hidden} common field${hidden === 1 ? ' is' : 's are'} hidden. The summary lists them.</p>` : '') +
+      `<div class="dactions"><button data-act="copy">Copy entry as JSON</button><button data-act="fmt">Open in formatter</button>` +
+      (e.trace && LOG.traceIdx.size > 1 && LOG.f.trace !== e.trace ? '<button data-act="trace">Show only this trace</button>' : '') +
+      '</div>';
+  }
+
+  function entryHtml(e, withDate) {
+    const open = LOG.open.has(e.k);
+    const d = e.delta;
+    const dcls = d == null ? '' : d >= 1000 ? ' gap' : d >= 250 ? ' slow' : '';
+    return `<details class="entry${e.k === LOG.curK ? ' cur' : ''}" data-k="${e.k}"${e.trace ? ` style="${traceColor(e.trace)}"` : ''}${open ? ' open' : ''}>` +
+      `<summary><span class="num">${e.k + 1}</span>` +
+      `<span class="time">${Number.isFinite(e.t) ? fmtTime(e.t, withDate) : ''}</span>` +
+      `<span class="delta${dcls}" title="Time since the previous entry shown">${d == null ? '' : '+' + fmtDur(d)}</span>` +
+      (e.sev ? `<span class="sev sev-${esc(e.sev.toLowerCase())}">${esc(e.sev)}</span>` : '') +
+      (e.module ? `<span class="mod">${esc(e.module)}</span>` : '') +
+      (e.ltype ? `<span class="ltype">${esc(e.ltype)}</span>` : '') +
+      `<span class="msg">${esc(e.body.replace(/\s+/g, ' ').slice(0, 400))}</span></summary>` +
+      `<div class="detail">${open ? detailHtml(e) : ''}</div></details>`;
+  }
+
+  function renderList() {
+    const list = filtered();
+    let prev = null;
+    for (const e of list) {
+      e.delta = prev && Number.isFinite(e.t) && Number.isFinite(prev.t) ? e.t - prev.t : null;
+      prev = e;
+    }
+    LOG.view = $('sort').value === 'desc' ? list.slice().reverse() : list;
+    const withDate = !sameDay();
+    $('list').innerHTML = LOG.view.map(e => entryHtml(e, withDate)).join('') || '<p class="hint">No entries match the filters.</p>';
+    $('count').textContent = `${list.length} of ${LOG.entries.length}`;
+  }
+
+  function setFilter(kind, value) {
+    LOG.f[kind] = value;
+    if (kind === 'q') $('q').value = value;
+    $('fSev').value = LOG.f.sev;
+    $('fMod').value = LOG.f.mod;
+    $('fTrace').value = LOG.f.trace;
+    renderSummary();
+    renderList();
+  }
+
+  const entryEl = (k) => $('list').querySelector(`.entry[data-k="${k}"]`);
+
+  function setCur(k) {
+    entryEl(LOG.curK)?.classList.remove('cur');
+    LOG.curK = k;
+    entryEl(k)?.classList.add('cur');
+  }
+
+  function step(dir) {
+    const v = LOG.view;
+    if (!v.length) return;
+    let pos = v.findIndex(e => e.k === LOG.curK);
+    pos = pos < 0 ? (dir > 0 ? 0 : v.length - 1) : Math.min(v.length - 1, Math.max(0, pos + dir));
+    const next = v[pos].k;
+    if (LOG.curK != null && LOG.curK !== next) {
+      LOG.open.delete(LOG.curK);
+      entryEl(LOG.curK)?.removeAttribute('open');
+    }
+    setCur(next);
+    const el = entryEl(next);
+    LOG.open.add(next);
+    const det = el.querySelector(':scope > .detail');
+    if (!det.innerHTML) det.innerHTML = detailHtml(LOG.entries[next]);
+    el.open = true;
+    el.scrollIntoView({ block: 'start' });
+    el.querySelector('summary').focus({ preventScroll: true });
+  }
+
+  // ---------- log viewer events ----------
+
+  const list = $('list');
+  list.addEventListener('toggle', (ev) => {
+    const d = ev.target;
+    if (!d.classList || !d.classList.contains('entry')) return;
+    const k = +d.dataset.k;
+    if (d.open) {
+      LOG.open.add(k);
+      const det = d.querySelector(':scope > .detail');
+      if (!det.innerHTML) det.innerHTML = detailHtml(LOG.entries[k]);
+    } else LOG.open.delete(k);
+  }, true);
+
+  list.addEventListener('click', (ev) => {
+    const entry = ev.target.closest('.entry');
+    if (!entry) return;
+    const e = LOG.entries[+entry.dataset.k];
+    if (ev.target.closest('summary')) { setCur(e.k); return; }
+    const btn = ev.target.closest('button[data-act]');
+    if (!btn) return;
+    const json = renderText(e.node, { expand: false, unit: '  ' }, 0, 0);
+    if (btn.dataset.act === 'copy') copyText(json, btn);
+    else if (btn.dataset.act === 'fmt') { input.value = json; run(); showView('fmtView'); }
+    else if (btn.dataset.act === 'trace') setFilter('trace', e.trace);
+  });
+
+  $('summary').addEventListener('click', (ev) => {
+    const c = ev.target.closest('.chip');
+    if (!c) return;
+    const { kind, v } = c.dataset;
+    setFilter(kind, LOG.f[kind] === v ? '' : v);
+  });
+
+  let qTimer = 0;
+  $('q').addEventListener('input', () => {
+    clearTimeout(qTimer);
+    qTimer = setTimeout(() => { LOG.f.q = $('q').value; renderSummary(); renderList(); }, 150);
+  });
+  $('fSev').addEventListener('change', (e) => setFilter('sev', e.target.value));
+  $('fMod').addEventListener('change', (e) => setFilter('mod', e.target.value));
+  $('fTrace').addEventListener('change', (e) => setFilter('trace', e.target.value));
+  $('sort').addEventListener('change', renderList);
+  $('hideCommon').addEventListener('change', renderList);
+  expandBox.addEventListener('change', () => { if (LOG.entries.length) { renderSummary(); renderList(); } });
+  $('prev').addEventListener('click', () => step(-1));
+  $('next').addEventListener('click', () => step(1));
+  $('openAll').addEventListener('click', () => { LOG.view.forEach(e => LOG.open.add(e.k)); renderList(); });
+  $('closeAll').addEventListener('click', () => { LOG.open.clear(); renderList(); });
+  $('newFile').addEventListener('click', () => $('file').click());
+
+  document.addEventListener('keydown', (e) => {
+    if ($('logView').hidden || $('logUi').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.target.closest('input, textarea, select')) return;
+    if (e.key === 'j' || e.key === 'n') { e.preventDefault(); step(1); }
+    else if (e.key === 'k' || e.key === 'p') { e.preventDefault(); step(-1); }
+  });
+
+  // ---------- files, drag and drop, tabs ----------
+
+  function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result);
+      if (!looksLikeCsv(text) && /^\s*[{"]/.test(text)) {
+        let single = false;
+        try { parseDocument(text); single = true; } catch {}
+        if (single) { input.value = text; run(); showView('fmtView'); return; }
+      }
+      loadLogs(text, file.name);
+    };
+    reader.onerror = () => showDropError('Could not read the file.');
+    reader.readAsText(file);
+  }
+
+  $('file').addEventListener('change', (e) => {
+    const f = e.target.files[0];
+    if (f) loadFile(f);
+    e.target.value = '';
+  });
+
+  const hasFiles = (e) => e.dataTransfer && [...e.dataTransfer.types].includes('Files');
+  let dragDepth = 0;
+  window.addEventListener('dragenter', (e) => { if (hasFiles(e)) { dragDepth++; document.body.classList.add('dragging'); } });
+  window.addEventListener('dragleave', (e) => {
+    if (hasFiles(e) && --dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); }
+  });
+  window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', (e) => {
+    if (!hasFiles(e)) return;
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('dragging');
+    const f = e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+
+  function showView(id) {
+    for (const v of ['fmtView', 'logView']) $(v).hidden = v !== id;
+    document.querySelectorAll('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === id)));
+  }
+  document.querySelector('.tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-view]');
+    if (b) showView(b.dataset.view);
   });
 
   run();
