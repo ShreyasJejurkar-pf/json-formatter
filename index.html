@@ -382,6 +382,35 @@
   .flegend .lw i { border-color: var(--num); }
   body.flow-mode .list-only { display: none; }
 
+  /* ---------- guide ---------- */
+  .help-btn { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-weight: 700; }
+  #guide {
+    width: min(640px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+  }
+  #guide::backdrop { background: rgba(0, 0, 0, .45); }
+  .g-body { display: flex; flex-direction: column; max-height: calc(100vh - 50px); }
+  .g-head { display: flex; align-items: center; padding: 14px 18px 2px; }
+  .g-head h2 { flex: 1; margin: 0; font-size: 16px; }
+  .g-x { border: 0; font-size: 22px; line-height: 1; padding: 0 8px; }
+  .g-tabs { margin: 10px 18px 0; align-self: flex-start; flex-wrap: wrap; }
+  .g-page { padding: 8px 18px 4px; overflow: auto; font-size: 13.5px; line-height: 1.55; }
+  .g-page ol, .g-page ul { padding-left: 20px; margin: 6px 0; }
+  .g-page li { margin: 7px 0; }
+  .g-page code { font: 12.5px var(--mono); }
+  .g-page .delta { min-width: 0; }
+  .g-tip { color: var(--muted); font-size: 12.5px; }
+  kbd { font: 12px var(--mono); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+  .g-foot { display: flex; align-items: center; gap: 8px; padding: 10px 18px 14px; border-top: 1px solid var(--border); margin-top: 6px; }
+  .g-step { flex: 1; text-align: center; color: var(--muted); font-size: 12.5px; }
+  .g-foot button:disabled { opacity: .4; cursor: default; }
+
   .srcbox { border: 0; border-radius: 6px; margin: 4px 0 8px; }
   .hint { color: var(--muted); font: 12.5px system-ui, sans-serif; margin: 6px 0 0; }
   .entry { scroll-margin-top: 96px; }
@@ -547,6 +576,7 @@
       <span id="fontSize" class="font-size" aria-live="polite">13px</span>
       <button id="fontUp" title="Larger text (Ctrl+Alt+=)" aria-label="Larger text">A+</button>
     </div>
+    <button id="help" class="help-btn" title="How to use this page" aria-label="How to use this page">?</button>
     <button id="theme" class="theme-btn" role="switch" aria-checked="false" title="Toggle dark mode">
       <span class="track"><span class="thumb"></span></span>
       <span>Dark</span>
@@ -621,6 +651,70 @@
     <div id="flow" class="flow" hidden></div>
   </div>
 </main>
+
+<dialog id="guide" aria-labelledby="guideTitle">
+  <div class="g-body">
+    <div class="g-head">
+      <h2 id="guideTitle">How to use this page</h2>
+      <button id="guideClose" class="g-x" aria-label="Close">&times;</button>
+    </div>
+    <nav class="tabs g-tabs" role="tablist">
+      <button role="tab" data-page="formatter">Formatter</button>
+      <button role="tab" data-page="logs">Log viewer</button>
+      <button role="tab" data-page="flow">Flow</button>
+      <button role="tab" data-page="privacy">Your data</button>
+    </nav>
+
+    <section class="g-page" data-page="formatter">
+      <ol>
+        <li>Paste JSON, a log line, or any text that contains JSON into <b>Input</b>. The output updates as you type. <b>Sample</b> loads an example.</li>
+        <li>JSON stored inside a string is formatted too. It is tagged <span class="badge">JSON string</span> when the whole string is JSON, and <span class="badge">contains JSON</span> when there is text around it.</li>
+        <li>When the JSON is a log entry, the blue strip above the output shows its application, module, transaction ID and merchant ID.</li>
+        <li>Click any <code>{</code> or <code>[</code> to fold it. <b>Collapse</b> folds everything below the top level and <b>Expand</b> opens it again.</li>
+        <li><b>Copy</b> copies the output with the indent you picked.</li>
+      </ol>
+      <p class="g-tip">You can also drop a .json file anywhere on the page. <b>A&minus;</b> and <b>A+</b> change the text size.</p>
+    </section>
+
+    <section class="g-page" data-page="logs" hidden>
+      <ol>
+        <li>In Grafana, open the logs panel menu and choose <b>Inspect</b>, then <b>Data</b>, then <b>Download CSV</b>.</li>
+        <li>Open the <b>Log viewer</b> tab and choose that file, or drop it anywhere on the page. JSON arrays and newline-delimited JSON work too.</li>
+        <li>The summary shows where the logs came from and lists every module, trace, ID and log type. Click one to filter the list, and click it again to remove the filter.</li>
+        <li>Rows are in time order. The <span class="delta slow">+664 ms</span> next to each time is the gap since the previous row. Orange means 250 ms or more and red means 1 s or more.</li>
+        <li>Click a row to see its message and fields. Press <kbd>j</kbd> and <kbd>k</kbd>, or use <b>Next</b> and <b>Prev</b>, to read the entries one at a time.</li>
+        <li>Fields that are the same in every entry are hidden from each row and listed once in the summary. Untick <b>Hide common fields</b> to see them in every row.</li>
+      </ol>
+    </section>
+
+    <section class="g-page" data-page="flow" hidden>
+      <ol>
+        <li>In the log viewer, switch the toolbar from <b>List</b> to <b>Flow</b> to see the calls between Merchant, PayFuture and Provider.</li>
+        <li>Solid blue arrows are requests. Dashed green arrows are responses, labelled with the time since their request and the status code. Orange arrows are provider webhooks and merchant callbacks.</li>
+        <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
+        <li>Click an arrow to open that entry in the list.</li>
+        <li>Click a trace in the summary to see one request's flow on its own.</li>
+      </ol>
+      <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Entries without one count as internal steps.</p>
+    </section>
+
+    <section class="g-page" data-page="privacy" hidden>
+      <ul>
+        <li>Everything runs in your browser. Nothing you paste or open is uploaded, and the page loads no outside scripts.</li>
+        <li>Theme, text size, indent and the other options are saved in this browser and come back on your next visit.</li>
+        <li>Pasted text and the open log file survive a refresh. The browser deletes them when you close the tab, and <b>Clear</b> deletes them straight away.</li>
+        <li>Log exports can contain account numbers, names and credentials. Share them with care.</li>
+      </ul>
+      <p class="g-tip">The <b>?</b> button at the top reopens this guide.</p>
+    </section>
+
+    <div class="g-foot">
+      <button id="guideBack">Back</button>
+      <span id="guideStep" class="g-step"></span>
+      <button id="guideNext" class="primary" autofocus>Next</button>
+    </div>
+  </div>
+</dialog>
 
 <script>
 (() => {
@@ -1065,6 +1159,48 @@
     set(k, v) { try { sessionStorage.setItem(k, v); return true; } catch { return false; } },
     del(k) { try { sessionStorage.removeItem(k); } catch {} }
   };
+
+  // ---------- first-time guide ----------
+  // A localStorage flag per page records that it was seen; no fingerprinting.
+
+  const GUIDE_PAGES = ['formatter', 'logs', 'flow', 'privacy'];
+  const guide = $('guide');
+  let guidePage = 0;
+  let guideReady = false; // stays false while saved state is restored on load
+
+  function showGuidePage(i) {
+    guidePage = Math.max(0, Math.min(GUIDE_PAGES.length - 1, i));
+    const name = GUIDE_PAGES[guidePage];
+    guide.querySelectorAll('.g-page').forEach(p => { p.hidden = p.dataset.page !== name; });
+    guide.querySelectorAll('.g-tabs [data-page]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.page === name)));
+    $('guideBack').disabled = guidePage === 0;
+    $('guideNext').textContent = guidePage === GUIDE_PAGES.length - 1 ? 'Done' : 'Next';
+    $('guideStep').textContent = `${guidePage + 1} of ${GUIDE_PAGES.length}`;
+    store.set('guide.' + name, '1');
+  }
+
+  function openGuide(name) {
+    showGuidePage(Math.max(0, GUIDE_PAGES.indexOf(name)));
+    if (!guide.open) guide.showModal();
+  }
+
+  function firstTime(name) {
+    if (guideReady && !store.get('guide.' + name)) openGuide(name);
+  }
+
+  const guideContext = () => $('logView').hidden ? 'formatter' : (LOG.mode === 'flow' && LOG.entries.length ? 'flow' : 'logs');
+
+  $('help').addEventListener('click', () => openGuide(guideContext()));
+  $('guideClose').addEventListener('click', () => guide.close());
+  $('guideBack').addEventListener('click', () => showGuidePage(guidePage - 1));
+  $('guideNext').addEventListener('click', () => {
+    if (guidePage === GUIDE_PAGES.length - 1) guide.close(); else showGuidePage(guidePage + 1);
+  });
+  guide.querySelector('.g-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-page]');
+    if (b) showGuidePage(GUIDE_PAGES.indexOf(b.dataset.page));
+  });
+  guide.addEventListener('click', (e) => { if (e.target === guide) guide.close(); });
 
   // Controls restored on load. Pasted text and log files go to sessionStorage instead (see `session`).
   for (const id of ['expand', 'indent', 'sort', 'hideCommon']) {
@@ -1723,6 +1859,7 @@
     $('list').hidden = LOG.mode === 'flow';
     $('flow').hidden = LOG.mode !== 'flow';
     document.querySelectorAll('#mode [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === LOG.mode)));
+    if (LOG.mode === 'flow') firstTime('flow');
     if (LOG.mode === 'flow' && LOG.entries.length) renderFlow();
   }
 
@@ -1802,7 +1939,7 @@
   $('closeFile').addEventListener('click', closeLogs);
 
   document.addEventListener('keydown', (e) => {
-    if ($('logView').hidden || $('logUi').hidden || LOG.mode === 'flow' || e.ctrlKey || e.metaKey || e.altKey) return;
+    if ($('logView').hidden || $('logUi').hidden || LOG.mode === 'flow' || guide.open || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.target.closest('input, textarea, select')) return;
     if (e.key === 'j' || e.key === 'n') { e.preventDefault(); step(1); }
     else if (e.key === 'k' || e.key === 'p') { e.preventDefault(); step(-1); }
@@ -1850,6 +1987,7 @@
   function showView(id) {
     for (const v of ['fmtView', 'logView']) $(v).hidden = v !== id;
     store.set('view', id);
+    if (id === 'logView') firstTime('logs');
     document.querySelectorAll('.tabs [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === id)));
   }
   document.querySelector('.tabs').addEventListener('click', (e) => {
@@ -1867,6 +2005,8 @@
   }
   if (store.get('view') === 'logView') showView('logView');
   run();
+  guideReady = true;
+  firstTime(guideContext());
 })();
 </script>
 </body>

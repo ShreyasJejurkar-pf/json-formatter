@@ -43,6 +43,10 @@ The **Log viewer** tab opens a Grafana logs panel CSV export, a JSON array of lo
 - Each entry can be copied as JSON or opened in the formatter.
 - **Flow** draws the entries as a sequence diagram between Merchant, PayFuture and Provider, using the `LogType` attribute (`API-MerchantRequestReceived`, `API-MerchantResponseSent`, `API-GatewayRequestSent`, `API-GatewayResponseReceived`, `API-GatewayWebhookReceived`, `API-MerchantCallbackSent`). Each response is paired with its request in the same trace to show the round-trip time and any status code. Log lines between calls collapse into an "internal steps" marker, and pauses of 2 s or more are marked. Clicking an arrow opens that entry.
 
+## First-time guide
+
+A short guide opens the first time someone uses the formatter, the log viewer and the flow view. Each page is marked as seen with a flag in `localStorage`, so it shows once per browser. The **?** button in the header reopens it.
+
 ## Saved settings
 
 The page saves theme, font size, indent, nested JSON expansion, the open tab, log sort order and the hide-common-fields option in the browser's local storage, and applies them on the next visit.
