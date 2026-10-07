@@ -257,6 +257,131 @@
   .source .fl { color: var(--muted); margin-right: 5px; }
   .source b { font-weight: 600; overflow-wrap: anywhere; }
   .source .app b { font-size: 14px; color: var(--accent); }
+  /* ---------- flow diagram ---------- */
+  .flow {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px 14px;
+  }
+  .fhead, .frow { display: grid; grid-template-columns: 12ch minmax(0, 1fr); }
+  .flane {
+    position: relative;
+    background:
+      linear-gradient(var(--border), var(--border)) 16.667% 0 / 2px 100% no-repeat,
+      linear-gradient(var(--border), var(--border)) 50% 0 / 2px 100% no-repeat,
+      linear-gradient(var(--border), var(--border)) 83.333% 0 / 2px 100% no-repeat;
+  }
+  .fhead .flane { height: 58px; background: none; }
+  .lane-h {
+    position: absolute;
+    top: 4px;
+    transform: translateX(-50%);
+    width: 30%;
+    text-align: center;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg);
+  }
+  .lane-h b { display: block; font-size: 13.5px; }
+  .lane-h span { display: block; color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .frow { min-height: 52px; }
+  .frow.internal { min-height: 30px; }
+  .ftime { font: 12px/1.3 var(--mono); color: var(--muted); padding-top: 18px; font-variant-numeric: tabular-nums; }
+  .frow.internal .ftime { padding-top: 7px; }
+  .arrow {
+    position: absolute;
+    top: 4px;
+    bottom: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    cursor: pointer;
+    min-width: 0;
+  }
+  .arrow:hover { background: none; }
+  .arrow:hover .alabel, .arrow:focus-visible .alabel { text-decoration: underline; }
+  .arrow.k-response { color: var(--str); }
+  .arrow.k-webhook, .arrow.k-callback { color: var(--num); }
+  .alabel { color: var(--text); font-size: 12.5px; max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ameta { font-size: 11px; font-weight: 600; max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .line { position: relative; align-self: stretch; height: 0; margin-top: 3px; border-top: 2px solid currentColor; }
+  .k-response .line { border-top-style: dashed; }
+  .line::after {
+    content: "";
+    position: absolute;
+    top: -6px;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .to-right .line::after { right: -2px; border-left: 9px solid currentColor; }
+  .to-left .line::after { left: -2px; border-right: 9px solid currentColor; }
+  .ibox {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 11.5px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    border-radius: 10px;
+    padding: 1px 9px;
+    white-space: nowrap;
+  }
+  .ftime .dot { display: inline-block; margin-right: 6px; vertical-align: 1px; }
+  .fhead, .frow { grid-template-columns: 14ch minmax(0, 1fr); }
+  .frow.gaprow { min-height: 34px; }
+  .gaprow .flane { background-image: none; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); margin: 6px 0; }
+  .gapbox {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--err);
+    background: var(--panel);
+    padding: 0 8px;
+  }
+  .mtime { display: none; color: var(--muted); font-weight: normal; }
+  .mtime .dot { display: inline-block; margin-right: 4px; }
+  @media (max-width: 640px) {
+    .flow { padding: 8px 6px 12px; }
+    .fhead, .frow { grid-template-columns: minmax(0, 1fr); }
+    .ftime { display: none; }
+    .mtime { display: inline; }
+    .frow { min-height: 0; }
+    .frow.internal { min-height: 30px; }
+    /* In flow, so a wrapped label makes its row taller; inline left/width still place the arrow. */
+    .arrow { position: relative; top: auto; bottom: auto; padding: 6px 0 8px; }
+    .lane-h { padding: 4px 2px; }
+    .lane-h b { font-size: 12px; }
+    .lane-h span { font-size: 10.5px; }
+    .alabel, .ameta { white-space: normal; text-align: center; line-height: 1.25; }
+    .alabel {
+      font-size: 11.5px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .ameta { font-size: 10.5px; }
+  }
+  .flegend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 12px; font-size: 12px; color: var(--muted); }
+  .flegend i { display: inline-block; width: 22px; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--accent); }
+  .flegend .lr i { border-color: var(--str); border-top-style: dashed; }
+  .flegend .lw i { border-color: var(--num); }
+  body.flow-mode .list-only { display: none; }
+
   .srcbox { border: 0; border-radius: 6px; margin: 4px 0 8px; }
   .hint { color: var(--muted); font: 12.5px system-ui, sans-serif; margin: 6px 0 0; }
   .entry { scroll-margin-top: 96px; }
@@ -471,24 +596,29 @@
   <div id="logUi" hidden>
     <section id="summary" class="summary"></section>
     <div class="bar logbar">
+      <div class="tabs" id="mode" role="tablist" aria-label="Display">
+        <button role="tab" data-mode="list" aria-selected="true">List</button>
+        <button role="tab" data-mode="flow" aria-selected="false">Flow</button>
+      </div>
       <input type="search" id="q" placeholder="Search messages and fields" aria-label="Search">
       <select id="fSev" aria-label="Severity"></select>
       <select id="fMod" aria-label="Module"></select>
       <select id="fTrace" aria-label="Trace"></select>
-      <select id="sort" aria-label="Order">
+      <select id="sort" class="list-only" aria-label="Order">
         <option value="asc">Oldest first</option>
         <option value="desc">Newest first</option>
       </select>
-      <label class="check" title="Hide fields that have the same value in every entry"><input type="checkbox" id="hideCommon" checked> Hide common fields</label>
-      <button id="prev" title="Previous entry (k)">&uarr; Prev</button>
-      <button id="next" title="Next entry (j)">&darr; Next</button>
-      <button id="openAll">Expand all</button>
-      <button id="closeAll">Collapse all</button>
+      <label class="check list-only" title="Hide fields that have the same value in every entry"><input type="checkbox" id="hideCommon" checked> Hide common fields</label>
+      <button id="prev" class="list-only" title="Previous entry (k)">&uarr; Prev</button>
+      <button id="next" class="list-only" title="Next entry (j)">&darr; Next</button>
+      <button id="openAll" class="list-only">Expand all</button>
+      <button id="closeAll" class="list-only">Collapse all</button>
       <button id="newFile">Open another file</button>
       <button id="closeFile" title="Clear this file and forget it">Clear</button>
       <span id="count" class="count"></span>
     </div>
     <div id="list"></div>
+    <div id="flow" class="flow" hidden></div>
   </div>
 </main>
 
@@ -1413,6 +1543,7 @@
     $('list').innerHTML = LOG.view.map(e => entryHtml(e, withDate)).join('') || '<p class="hint">No entries match the filters.</p>';
     $('count').textContent = `${list.length} of ${LOG.entries.length}` + (LOG.kept ? '' : ' · too large to keep after a refresh');
     saveLogState();
+    if (LOG.mode === 'flow') renderFlow();
   }
 
   function setFilter(kind, value) {
@@ -1453,6 +1584,169 @@
     el.scrollIntoView({ block: 'start' });
     el.querySelector('summary').focus({ preventScroll: true });
   }
+
+  // ---------- flow diagram ----------
+
+  // Lanes: 0 merchant, 1 PayFuture, 2 provider. Types from PFC.Basics.Core LogTypes.
+  const FLOW_TYPES = {
+    'api-merchantrequestreceived': { from: 0, to: 1, kind: 'request' },
+    'api-merchantresponsesent': { from: 1, to: 0, kind: 'response' },
+    'api-gatewayrequestsent': { from: 1, to: 2, kind: 'request' },
+    'api-gatewayresponsereceived': { from: 2, to: 1, kind: 'response' },
+    'api-gatewaywebhookreceived': { from: 2, to: 1, kind: 'webhook' },
+    'api-merchantcallbacksent': { from: 1, to: 0, kind: 'callback' }
+  };
+  const LANE_X = [16.667, 50, 83.333];
+
+  function flowOf(e) {
+    const t = FLOW_TYPES[e.ltype.toLowerCase()];
+    if (t) return t;
+    // Some callback senders log without a LogType.
+    if (!e.ltype && /callback/i.test(e.module) && /\bsen[dt]\b/i.test(e.body)) return { from: 1, to: 0, kind: 'callback', inferred: true };
+    return null;
+  }
+
+  // Text before the first JSON block, e.g. "GetAccessToken response".
+  function flowLabel(body) {
+    const segs = findJson(body, true);
+    const head = segs[0] && segs[0].text != null && segs.length > 1 ? segs[0].text : body;
+    return head.replace(/\s+/g, ' ').replace(/[\s:|=-]+$/, '').trim().slice(0, 120) || body.slice(0, 120);
+  }
+
+  const STATUS_KEYS = ['statuscode', 'responsecode', 'txnstatus', 'status', 'success'];
+
+  function flowStatus(body) {
+    const found = new Map();
+    const walk = (n, depth) => {
+      if (depth > 3) return;
+      if (n.t === 'str' && depth > 0) { const segs = embedded(n, 1); if (segs) segs.forEach(s => s.node && walk(s.node, depth + 1)); return; }
+      if (n.t === 'arr') { n.items.forEach(x => walk(x, depth + 1)); return; }
+      if (n.t !== 'obj') return;
+      for (const [k, v] of n.entries) {
+        const kl = k.toLowerCase();
+        if (STATUS_KEYS.includes(kl) && v.t !== 'obj' && v.t !== 'arr' && v.t !== 'null' && !found.has(kl)) found.set(kl, valText(v));
+        else walk(v, depth + 1);
+      }
+    };
+    for (const s of findJson(body, true)) if (s.node) walk(s.node, 0);
+    const k = STATUS_KEYS.find(x => found.has(x));
+    return k ? found.get(k) : '';
+  }
+
+  function laneNames(list) {
+    const uniq = (xs) => [...new Set(xs.filter(Boolean))];
+    const src = (label) => uniq(list.map(e => (e.src || (e.src = sourceInfo(e.node))).find(([l]) => l === label)?.[1]));
+    // Webhook modules can be the merchant's own callback landing on /notify, so name providers from outbound calls first.
+    const provName = (e) => e.module.replace(/^webhook-/i, '').replace(/-(integration|payout|payin|payment)$/i, '');
+    const outbound = list.filter(e => { const f = flowOf(e); return f && f.kind !== 'webhook' && (f.from === 2 || f.to === 2); });
+    const providers = uniq((outbound.length ? outbound : list.filter(e => flowOf(e)?.kind === 'webhook')).map(provName));
+    const merchants = src('Merchant ID');
+    return [
+      ['Merchant', merchants.length ? 'MerchantId ' + merchants.join(', ') : ''],
+      ['PayFuture', src('Application').join(', ')],
+      ['Provider', providers.join(', ')]
+    ];
+  }
+
+  function renderFlow() {
+    const list = filtered();
+    const rows = [];
+    const pending = new Map();
+    let internal = [];
+    let lastT = NaN;
+    for (const e of list) {
+      if (e.t - lastT >= 2000) {
+        if (internal.length) { rows.push({ internal }); internal = []; }
+        rows.push({ gap: e.t - lastT });
+      }
+      if (Number.isFinite(e.t)) lastT = e.t;
+      const f = flowOf(e);
+      if (!f) { internal.push(e); continue; }
+      if (internal.length) { rows.push({ internal }); internal = []; }
+      const key = (e.trace || '') + (f.from === 0 || f.to === 0 ? ':merchant' : ':provider');
+      let latency = null;
+      if (f.kind === 'request') {
+        if (!pending.has(key)) pending.set(key, []);
+        pending.get(key).push(e);
+      } else if (f.kind === 'response' && pending.get(key)?.length) {
+        const req = pending.get(key).pop();
+        if (Number.isFinite(e.t) && Number.isFinite(req.t)) latency = e.t - req.t;
+      }
+      rows.push({ e, f, latency });
+    }
+    if (internal.length) rows.push({ internal });
+
+    const el = $('flow');
+    if (!rows.some(r => r.e)) {
+      el.innerHTML = '<p class="hint">None of these entries has a request or response LogType, so there is no flow to draw. ' +
+        'The flow uses API-MerchantRequestReceived, API-MerchantResponseSent, API-GatewayRequestSent, ' +
+        'API-GatewayResponseReceived, API-GatewayWebhookReceived and API-MerchantCallbackSent.</p>';
+      return;
+    }
+
+    const withDate = !sameDay();
+    const head = laneNames(list).map(([name, sub], i) =>
+      `<div class="lane-h" style="left:${LANE_X[i]}%"><b>${name}</b><span title="${esc(sub)}">${esc(sub) || '&nbsp;'}</span></div>`).join('');
+    const dot = (e) => e.trace && LOG.traceIdx.size > 1 ? `<span class="dot" style="${traceColor(e.trace)}" title="Trace ${esc(e.trace)}"></span>` : '';
+    const body = rows.map(r => {
+      if (r.gap) return `<div class="frow gaprow"><div class="ftime"></div><div class="flane"><span class="gapbox">${fmtDur(r.gap)} later</span></div></div>`;
+      if (r.internal) {
+        const xs = r.internal;
+        const tt = xs.map(x => x.t).filter(Number.isFinite);
+        const span = tt.length > 1 ? ' · ' + fmtDur(Math.max(...tt) - Math.min(...tt)) : '';
+        const tip = xs.slice(0, 20).map(x => flowLabel(x.body)).join('\n') + (xs.length > 20 ? '\n…' : '');
+        return `<div class="frow internal"><div class="ftime"></div><div class="flane">` +
+          `<button class="ibox" data-k="${xs[0].k}" title="${esc(tip)}">${xs.length} internal step${xs.length === 1 ? '' : 's'}${span}</button></div></div>`;
+      }
+      const { e, f, latency } = r;
+      const left = Math.min(LANE_X[f.from], LANE_X[f.to]);
+      const width = Math.abs(LANE_X[f.from] - LANE_X[f.to]);
+      const status = f.kind === 'response' || f.kind === 'webhook' ? flowStatus(e.body) : '';
+      const meta = [f.kind + (f.inferred ? ' (inferred)' : ''), latency != null ? fmtDur(latency) : '', status].filter(Boolean).join(' · ');
+      return `<div class="frow"><div class="ftime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t, withDate) : ''}</div><div class="flane">` +
+        `<button class="arrow k-${f.kind} ${f.to > f.from ? 'to-right' : 'to-left'}" data-k="${e.k}" style="left:${left}%;width:${width}%" ` +
+        `title="#${e.k + 1} ${esc(e.ltype || e.module)}\n${esc(e.body.slice(0, 300))}">` +
+        `<span class="alabel">${esc(flowLabel(e.body))}</span>` +
+        `<span class="ameta"><span class="mtime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t) + ' · ' : ''}</span>${esc(meta)}</span>` +
+        '<span class="line"></span></button></div></div>';
+    }).join('');
+
+    el.innerHTML = `<div class="fhead"><div></div><div class="flane">${head}</div></div>${body}` +
+      '<div class="flegend"><span><i></i>request</span><span class="lr"><i></i>response, with time since its request</span>' +
+      '<span class="lw"><i></i>webhook or callback</span><span>Click an arrow to open the entry.</span></div>';
+  }
+
+  function setMode(mode) {
+    LOG.mode = mode === 'flow' ? 'flow' : 'list';
+    store.set('opt.logMode', LOG.mode);
+    document.body.classList.toggle('flow-mode', LOG.mode === 'flow');
+    $('list').hidden = LOG.mode === 'flow';
+    $('flow').hidden = LOG.mode !== 'flow';
+    document.querySelectorAll('#mode [data-mode]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === LOG.mode)));
+    if (LOG.mode === 'flow' && LOG.entries.length) renderFlow();
+  }
+
+  function goToEntry(k) {
+    setMode('list');
+    LOG.open.add(k);
+    LOG.curK = k;
+    renderList();
+    const el = entryEl(k);
+    if (el) {
+      el.scrollIntoView({ block: 'start' });
+      el.querySelector('summary').focus({ preventScroll: true });
+    }
+  }
+
+  $('mode').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-mode]');
+    if (b) setMode(b.dataset.mode);
+  });
+  $('flow').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-k]');
+    if (b) goToEntry(+b.dataset.k);
+  });
+  setMode(store.get('opt.logMode'));
 
   // ---------- log viewer events ----------
 
@@ -1508,7 +1802,7 @@
   $('closeFile').addEventListener('click', closeLogs);
 
   document.addEventListener('keydown', (e) => {
-    if ($('logView').hidden || $('logUi').hidden || e.ctrlKey || e.metaKey || e.altKey) return;
+    if ($('logView').hidden || $('logUi').hidden || LOG.mode === 'flow' || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.target.closest('input, textarea, select')) return;
     if (e.key === 'j' || e.key === 'n') { e.preventDefault(); step(1); }
     else if (e.key === 'k' || e.key === 'p') { e.preventDefault(); step(-1); }
