@@ -41,7 +41,7 @@ The **Log viewer** tab opens a Grafana logs panel CSV export, a JSON array of lo
 - Opening an entry shows its message with the embedded JSON formatted, then its fields grouped as entry, attributes, resources and Grafana labels. Fields that are the same in every entry are hidden from each entry and listed once in the summary.
 - **Prev** and **Next**, or the `k` and `j` keys, step through the entries one at a time.
 - Each entry can be copied as JSON or opened in the formatter.
-- **Flow** draws the entries as a sequence diagram between Merchant, PayFuture and Provider, using the `LogType` attribute (`API-MerchantRequestReceived`, `API-MerchantResponseSent`, `API-GatewayRequestSent`, `API-GatewayResponseReceived`, `API-GatewayWebhookReceived`, `API-MerchantCallbackSent`). Each response is paired with its request in the same trace to show the round-trip time and any status code. Log lines between calls collapse into an "internal steps" marker, and pauses of 2 s or more are marked. Clicking an arrow opens that entry.
+- **Flow** draws the entries as a sequence diagram between Merchant, PayFuture and Provider, using the `LogType` attribute (`API-MerchantRequestReceived`, `API-MerchantResponseSent`, `API-GatewayRequestSent`, `API-GatewayResponseReceived`, `API-GatewayWebhookReceived`, `API-MerchantCallbackSent`). Each response is paired with its request in the same trace to show the round-trip time and any status code. Log lines between calls collapse into an "internal steps" marker, and pauses of 2 s or more are marked. Hovering over an arrow shows its payload, formatted, in a popover. Clicking an arrow opens that entry, and **Back to flow** returns to the same spot in the diagram.
 
 ## First-time guide
 

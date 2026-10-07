@@ -382,6 +382,49 @@
   .flegend .lw i { border-color: var(--num); }
   body.flow-mode .list-only { display: none; }
 
+  /* ---------- flow popover ---------- */
+  .pop {
+    position: fixed;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    width: min(620px, calc(100vw - 16px));
+    max-height: min(62vh, 560px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
+    overflow: hidden;
+  }
+  .pop-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font: 12.5px/1.5 var(--mono);
+  }
+  .pop-meta { font: 600 11.5px/1.5 system-ui, sans-serif; color: var(--accent); }
+  .pop-body {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    padding: 8px 12px 10px 3ch;
+    font: var(--code-size)/1.5 var(--mono);
+  }
+  .pop .pop-body { padding: 8px 12px 10px 3ch; }
+  .pop-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .pop-foot span { flex: 1; }
+
   /* ---------- guide ---------- */
   .help-btn { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-weight: 700; }
   #guide {
@@ -645,12 +688,15 @@
       <button id="closeAll" class="list-only">Collapse all</button>
       <button id="newFile">Open another file</button>
       <button id="closeFile" title="Clear this file and forget it">Clear</button>
+      <button id="backFlow" class="primary" hidden>&larr; Back to flow</button>
       <span id="count" class="count"></span>
     </div>
     <div id="list"></div>
     <div id="flow" class="flow" hidden></div>
   </div>
 </main>
+
+<div id="pop" class="pop" role="tooltip" hidden></div>
 
 <dialog id="guide" aria-labelledby="guideTitle">
   <div class="g-body">
@@ -692,7 +738,7 @@
         <li>In the log viewer, switch the toolbar from <b>List</b> to <b>Flow</b> to see the calls between Merchant, PayFuture and Provider.</li>
         <li>Solid blue arrows are requests. Dashed green arrows are responses, labelled with the time since their request and the status code. Orange arrows are provider webhooks and merchant callbacks.</li>
         <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
-        <li>Click an arrow to open that entry in the list.</li>
+        <li>Hover over an arrow to see its payload, formatted. Click the arrow to open the entry in the list, and use <b>&larr; Back to flow</b> to return to the same spot.</li>
         <li>Click a trace in the summary to see one request's flow on its own.</li>
       </ol>
       <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Entries without one count as internal steps.</p>
@@ -1083,11 +1129,12 @@
     const collapsed = fold.classList.toggle('collapsed');
     tg.setAttribute('aria-expanded', String(!collapsed));
   }
-  out.addEventListener('click', (e) => {
+  // Document-level so folds also work in log entries and the flow popover.
+  document.addEventListener('click', (e) => {
     const tg = e.target.closest('.tg');
     if (tg) toggle(tg);
   });
-  out.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', (e) => {
     const tg = e.target.closest('.tg');
     if (tg && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggle(tg); }
   });
@@ -1841,7 +1888,7 @@
       const meta = [f.kind + (f.inferred ? ' (inferred)' : ''), latency != null ? fmtDur(latency) : '', status].filter(Boolean).join(' · ');
       return `<div class="frow"><div class="ftime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t, withDate) : ''}</div><div class="flane">` +
         `<button class="arrow k-${f.kind} ${f.to > f.from ? 'to-right' : 'to-left'}" data-k="${e.k}" style="left:${left}%;width:${width}%" ` +
-        `title="#${e.k + 1} ${esc(e.ltype || e.module)}\n${esc(e.body.slice(0, 300))}">` +
+        `aria-label="#${e.k + 1} ${esc(e.ltype || e.module)}">` +
         `<span class="alabel">${esc(flowLabel(e.body))}</span>` +
         `<span class="ameta"><span class="mtime">${dot(e)}${Number.isFinite(e.t) ? fmtTime(e.t) + ' · ' : ''}</span>${esc(meta)}</span>` +
         '<span class="line"></span></button></div></div>';
@@ -1849,11 +1896,107 @@
 
     el.innerHTML = `<div class="fhead"><div></div><div class="flane">${head}</div></div>${body}` +
       '<div class="flegend"><span><i></i>request</span><span class="lr"><i></i>response, with time since its request</span>' +
-      '<span class="lw"><i></i>webhook or callback</span><span>Click an arrow to open the entry.</span></div>';
+      '<span class="lw"><i></i>webhook or callback</span><span>Hover an arrow to see its payload. Click it to open the entry.</span></div>';
   }
+
+  // ---------- flow popover ----------
+
+  const pop = $('pop');
+  const canHover = window.matchMedia('(hover: hover)').matches;
+  let popK = null, popTimer = 0, popAnchor = null;
+
+  function showPop(btn) {
+    clearTimeout(popTimer);
+    const k = +btn.dataset.k;
+    const e = LOG.entries[k];
+    if (!e) return;
+    if (popK !== k) {
+      popK = k;
+      const ctx = { expand: expandBox.checked, nested: 0 };
+      const meta = btn.querySelector('.ameta')?.textContent.replace(/^.*?\d\d:\d\d:\d\d\.\d{3} \u00b7 /, '') || '';
+      pop.innerHTML =
+        `<div class="pop-head"><span class="num">#${e.k + 1}</span>` +
+        `<span class="time">${Number.isFinite(e.t) ? fmtTime(e.t) : ''}</span>` +
+        (e.module ? `<span class="mod">${esc(e.module)}</span>` : '') +
+        `<span class="pop-meta">${esc(meta)}</span></div>` +
+        `<div class="pop-body dmsg">${msgHtml(e.body, ctx) || '<span class="hint">No message.</span>'}</div>` +
+        `<div class="pop-foot"><span>${canHover ? 'Click the arrow to open this entry in the list.' : ''}</span>` +
+        `<button data-open="${k}">Open entry</button></div>`;
+      pop.scrollTop = 0;
+    }
+    pop.hidden = false;
+    popAnchor = btn;
+    placePop(btn);
+  }
+
+  // Below the arrow when it fits, otherwise above; clamped to the viewport.
+  function placePop(btn) {
+    const r = btn.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    const w = pop.offsetWidth, h = pop.offsetHeight;
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8);
+    const below = r.bottom + 6;
+    const top = below + h <= vh - 8 || r.top < vh / 2 ? Math.min(below, vh - h - 8) : Math.max(8, r.top - h - 6);
+    pop.style.left = left + 'px';
+    pop.style.top = Math.max(8, top) + 'px';
+  }
+
+  function hidePop(delay = 0) {
+    clearTimeout(popTimer);
+    popTimer = setTimeout(() => { pop.hidden = true; popK = null; popAnchor = null; }, delay);
+  }
+
+  const flowEl = $('flow');
+  flowEl.addEventListener('mouseover', (e) => {
+    const b = e.target.closest('.arrow');
+    if (b && canHover) showPop(b);
+  });
+  flowEl.addEventListener('mouseout', (e) => {
+    const b = e.target.closest('.arrow');
+    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(180);
+  });
+  flowEl.addEventListener('focusin', (e) => {
+    const b = e.target.closest('.arrow');
+    if (b) showPop(b);
+  });
+  flowEl.addEventListener('focusout', (e) => {
+    if (!pop.contains(e.relatedTarget)) hidePop(180);
+  });
+  pop.addEventListener('mouseenter', () => clearTimeout(popTimer));
+  pop.addEventListener('mouseleave', () => hidePop(180));
+  pop.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-open]');
+    if (b) { hidePop(); goToEntry(+b.dataset.open); }
+  });
+  // Follow the arrow while the page scrolls; close once it leaves the screen.
+  function followAnchor() {
+    if (pop.hidden || !popAnchor) return;
+    const r = popAnchor.getBoundingClientRect();
+    if (!popAnchor.isConnected || r.bottom < 0 || r.top > window.innerHeight) hidePop();
+    else placePop(popAnchor);
+  }
+  $('logView').addEventListener('scroll', followAnchor);
+  window.addEventListener('scroll', followAnchor);
+  window.addEventListener('resize', followAnchor);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) hidePop(); });
+  document.addEventListener('click', (e) => {
+    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.arrow')) hidePop();
+  });
+
+  // ---------- back to flow ----------
+
+  const scroller = () => getComputedStyle($('logView')).overflowY === 'auto' ? $('logView') : document.scrollingElement;
+
+  $('backFlow').addEventListener('click', () => {
+    const ret = LOG.flowReturn;
+    setMode('flow');
+    if (ret) scroller().scrollTop = ret.scroll;
+  });
 
   function setMode(mode) {
     LOG.mode = mode === 'flow' ? 'flow' : 'list';
+    if (LOG.mode === 'flow') { LOG.flowReturn = null; $('backFlow').hidden = true; }
+    else hidePop();
     store.set('opt.logMode', LOG.mode);
     document.body.classList.toggle('flow-mode', LOG.mode === 'flow');
     $('list').hidden = LOG.mode === 'flow';
@@ -1864,7 +2007,10 @@
   }
 
   function goToEntry(k) {
+    const scroll = scroller().scrollTop;
     setMode('list');
+    LOG.flowReturn = { scroll };
+    $('backFlow').hidden = false;
     LOG.open.add(k);
     LOG.curK = k;
     renderList();
@@ -1879,9 +2025,12 @@
     const b = e.target.closest('[data-mode]');
     if (b) setMode(b.dataset.mode);
   });
+  // Touch screens have no hover, so the first tap shows the popover and its button opens the entry.
   $('flow').addEventListener('click', (e) => {
     const b = e.target.closest('[data-k]');
-    if (b) goToEntry(+b.dataset.k);
+    if (!b) return;
+    if (!canHover && b.classList.contains('arrow') && popK !== +b.dataset.k) { showPop(b); return; }
+    goToEntry(+b.dataset.k);
   });
   setMode(store.get('opt.logMode'));
 
