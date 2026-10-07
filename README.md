@@ -28,6 +28,15 @@ becomes
 
 Everything runs in the browser. The page loads no external scripts and sends nothing over the network.
 
+## Sharing
+
+**Share**, in the log viewer and the formatter, sends the current view to someone else. It works without a server:
+
+- **Copy link** compresses the data into the URL fragment (the part after `#`), which browsers never send to a server. The link opens the same view: list or flow, filters, open entries and sort order. Chat apps cut off very long links, so this suits a few hundred entries.
+- **Download as HTML file** saves a copy of this page with the data inside. It opens in any browser, offline too, and suits large exports.
+
+You can share only the entries that match the current filters. Sensitive values are masked by default: passwords, tokens, secrets, account numbers, names, emails and phone numbers, including inside escaped JSON and query strings, plus anything that looks like a JWT. Masking matches field names, so check the shared view before sending it.
+
 ## Source strip
 
 When the JSON is a log entry, a strip above the output shows where it came from: `Application`, `Module`, `TransactionId`, `MerchantId`, service name, environment and version. Grafana's flattened column names such as `attributes_Module` work too.

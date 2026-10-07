@@ -462,6 +462,39 @@
   }
   .pop-foot span { flex: 1; }
 
+  /* ---------- sharing ---------- */
+  .banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 16px 0;
+    padding: 7px 8px 7px 12px;
+    border: 1px solid var(--accent-soft);
+    border-radius: 8px;
+    background: var(--badge-bg);
+    font-size: 13px;
+  }
+  .banner span { flex: 1; }
+  .banner.error { border-color: var(--err); color: var(--err); }
+  .banner button { border: 0; font-size: 18px; line-height: 1; padding: 0 6px; }
+  #shareDlg {
+    width: min(560px, calc(100vw - 32px));
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--panel);
+    color: var(--text);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .35);
+  }
+  #shareDlg::backdrop { background: rgba(0, 0, 0, .45); }
+  .share-page label.check { display: flex; align-items: flex-start; gap: 8px; margin: 10px 0; }
+  .share-page label.check input { margin-top: 3px; }
+  .share-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+  .share-actions button { padding: 6px 14px; }
+  .share-info { min-height: 1.5em; font-size: 12.5px; color: var(--muted); }
+  .share-info.ok { color: var(--str); }
+  .share-info.warn { color: var(--num); }
+
   /* ---------- guide ---------- */
   .help-btn { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-weight: 700; }
   #guide {
@@ -664,6 +697,11 @@
   </div>
 </header>
 
+<div id="banner" class="banner" role="status" hidden>
+  <span id="bannerText"></span>
+  <button id="bannerClose" aria-label="Dismiss">&times;</button>
+</div>
+
 <main id="fmtView">
   <section class="pane">
     <div class="bar">
@@ -686,6 +724,7 @@
       </select>
       <button id="collapse">Collapse</button>
       <button id="expandAll">Expand</button>
+      <button id="shareFmt" title="Share this JSON as a link or a file">Share</button>
       <button id="copy" class="primary">Copy</button>
     </div>
     <div id="source" class="source" hidden></div>
@@ -723,6 +762,7 @@
       <button id="next" class="list-only" title="Next entry (j)">&darr; Next</button>
       <button id="openAll" class="list-only">Expand all</button>
       <button id="closeAll" class="list-only">Collapse all</button>
+      <button id="shareLogs" class="primary" title="Share this view as a link or a file">Share</button>
       <button id="newFile">Open another file</button>
       <button id="closeFile" title="Clear this file and forget it">Clear</button>
       <button id="backFlow" class="primary" hidden>&larr; Back to flow</button>
@@ -734,6 +774,26 @@
 </main>
 
 <div id="pop" class="pop" role="tooltip" hidden></div>
+
+<dialog id="shareDlg" aria-labelledby="shareTitle">
+  <div class="g-body">
+    <div class="g-head">
+      <h2 id="shareTitle">Share</h2>
+      <button id="shareClose" class="g-x" aria-label="Close">&times;</button>
+    </div>
+    <div class="g-page share-page">
+      <p id="shareWhat"></p>
+      <label class="check" id="shareFilteredRow"><input type="checkbox" id="shareFiltered" checked> <span id="shareFilteredLabel"></span></label>
+      <label class="check"><input type="checkbox" id="shareMask" checked> Mask passwords, tokens, secrets, account numbers, names, emails and phone numbers</label>
+      <p class="g-tip">The data travels inside the link or the file, never through a server. Masking matches field names, so open the shared view and check it before you send it.</p>
+      <div class="share-actions">
+        <button id="shareLink" class="primary">Copy link</button>
+        <button id="shareFile">Download as HTML file</button>
+      </div>
+      <p id="shareInfo" class="share-info" aria-live="polite"></p>
+    </div>
+  </div>
+</dialog>
 
 <dialog id="guide" aria-labelledby="guideTitle">
   <div class="g-body">
@@ -767,6 +827,7 @@
         <li>Rows are in time order. The <span class="delta slow">+664 ms</span> next to each time is the gap since the previous row. Orange means 250 ms or more and red means 1 s or more.</li>
         <li>Click a row to see its message and fields. Press <kbd>j</kbd> and <kbd>k</kbd>, or use <b>Next</b> and <b>Prev</b>, to read the entries one at a time.</li>
         <li>Exceptions and errors get a red or amber badge, even when they were logged at Information level. Click <b>Exceptions</b> or <b>Errors</b> under Problems in the summary to list only those.</li>
+        <li><b>Share</b> sends this exact view, list or flow with its filters and open entries, as a link or as an HTML file. The link suits a few hundred entries. For bigger files, send the HTML file, because chat apps cut off long links.</li>
         <li>Fields that are the same in every entry are hidden from each row and listed once in the summary. Untick <b>Hide common fields</b> to see them in every row.</li>
       </ol>
     </section>
@@ -789,6 +850,7 @@
         <li>Everything runs in your browser. Nothing you paste or open is uploaded, and the page loads no outside scripts.</li>
         <li>Theme, text size, indent and the other options are saved in this browser and come back on your next visit.</li>
         <li>Pasted text and the open log file survive a refresh. The browser deletes them when you close the tab, and <b>Clear</b> deletes them straight away.</li>
+        <li>A shared link or file carries the data itself, so anyone who has it can read it. Sensitive values are masked by default: passwords, tokens, secrets, account numbers, names, emails and phone numbers. Masking goes by field name, so check the shared view before sending it.</li>
         <li>Log exports can contain account numbers, names and credentials. Share them with care.</li>
       </ul>
       <p class="g-tip">The <b>?</b> button at the top reopens this guide.</p>
@@ -805,6 +867,11 @@
 <script>
 (() => {
   'use strict';
+
+  // Untouched page markup, captured before any script changes it, for the downloadable snapshot.
+  const PAGE_SOURCE = ('<!doctype html>\n' + document.documentElement.outerHTML)
+    // Written so it cannot match its own source text, which is also in PAGE_SOURCE.
+    .replace(/<script id="share-data" type="application\/json">"[\w-]*"<\/script>\s*/, '');
 
   // ---------- parser ----------
   // Hand-written so numbers keep their source text (3026.00 stays 3026.00, big ids keep precision).
@@ -1446,6 +1513,7 @@
   }
 
   function readRecords(text) {
+    if (text.startsWith(SHARE_MARK)) return sharedRecords(text);
     if (looksLikeCsv(text)) return csvRecords(text);
     const trimmed = text.replace(/^﻿/, '').trim();
     try {
@@ -1546,8 +1614,8 @@
   // `saved` is the view state kept in sessionStorage, passed when restoring after a refresh.
   function loadLogs(text, name, saved) {
     let records;
-    try { records = readRecords(text); } catch (e) { if (!saved) showDropError(e.message); return; }
-    if (!records.length) { if (!saved) showDropError('No log entries found in this file.'); return; }
+    try { records = readRecords(text); } catch (e) { if (!saved) showDropError(e.message); return false; }
+    if (!records.length) { if (!saved) showDropError('No log entries found in this file.'); return false; }
 
     const entries = records.map(makeEntry);
     if (entries.every(e => Number.isFinite(e.t))) entries.sort((a, b) => a.t - b.t || a.i - b.i);
@@ -1589,6 +1657,7 @@
       showView('logView');
       $('logView').scrollTop = 0;
     }
+    return true;
   }
 
   function saveLogState() {
@@ -2209,6 +2278,217 @@
     else if (e.key === 'k' || e.key === 'p') { e.preventDefault(); step(-1); }
   });
 
+  // ---------- sharing ----------
+  // The data rides in the URL fragment (never sent to the server) or inside a downloaded copy of this page.
+
+  const SITE_URL = 'https://shreyasjejurkar-pf.github.io/json-formatter/';
+  const SHARE_MARK = '{"$share":1,';
+  const CHAT_LIMIT = 28000; // roughly where Teams starts cutting messages
+
+  async function pack(obj) {
+    const stream = new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  async function unpack(s) {
+    const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return JSON.parse(await new Response(stream).text());
+  }
+
+  // Field names whose values are hidden. Matched at any level of string escaping, so JSON inside strings is covered.
+  const SENSITIVE = [
+    'password', 'passwd', 'pwd', 'pass', 'secret', 'client_?secret', 'secret_?key', 'api_?key', 'token', 'access_?token',
+    'refresh_?token', 'id_?token', 'authorization', 'auth', 'account_?number', 'account_?no', 'acc_?no', 'iban',
+    'account_?name', 'account_?holder(?:_?name)?', 'beneficiary_?name', 'customer_?name', 'card_?number', 'card_?no',
+    'pan', 'cvv', 'cvc', 'email', 'email_?id', 'phone', 'phone_?number', 'mobile', 'mobile_?number', 'msisdn'
+  ].join('|');
+  const MASKED = '•••';
+  const MASK_STRING = new RegExp(`(\\\\*)"(${SENSITIVE})\\1"(\\s*:\\s*)\\1"(.*?)(?<!\\\\)\\1"`, 'gi');
+  const MASK_NUMBER = new RegExp(`(\\\\*)"(${SENSITIVE})\\1"(\\s*:\\s*)(-?\\d[\\d.eE+-]*)`, 'gi');
+  const MASK_QUERY = new RegExp(`(^|[?&\\s])(${SENSITIVE})=([^&\\s"\\\\]*)`, 'gim');
+  const JWT = /eyJ[\w-]{6,}\.[\w-]{6,}\.[\w-]*/g;
+
+  function maskText(s) {
+    return s
+      .replace(MASK_STRING, (m, esc1, key, sep) => `${esc1}"${key}${esc1}"${sep}${esc1}"${MASKED}${esc1}"`)
+      .replace(MASK_NUMBER, (m, esc1, key, sep) => `${esc1}"${key}${esc1}"${sep}${esc1}"${MASKED}${esc1}"`)
+      .replace(MASK_QUERY, (m, pre, key) => `${pre}${key}=${MASKED}`)
+      .replace(JWT, MASKED);
+  }
+
+  // Entries as compact JSON with their timestamp and Grafana labels; raw numbers are kept as written.
+  function shareLogsText(entries, mask) {
+    const items = entries.map(e => {
+      let r = renderText(e.node, { expand: false, unit: '' }, 0, 0).replace(/\n/g, '');
+      if (mask) r = maskText(r);
+      const labels = e.fields.filter(f => f.sec === SECTION_LAST).map(f => [f.key, valText(f.node)]);
+      return `{"t":${Number.isFinite(e.t) ? e.t : 'null'},"r":${r},"l":${JSON.stringify(labels)}}`;
+    });
+    return `${SHARE_MARK}"entries":[${items.join(',')}]}`;
+  }
+
+  function sharedRecords(text) {
+    const root = parseDocument(text);
+    const list = root.entries.find(([k]) => k === 'entries')?.[1];
+    if (!list || list.t !== 'arr') throw new Error('The shared data is not in the expected format.');
+    return list.items.map(item => {
+      const get = (k) => item.entries.find(([kk]) => kk === k)?.[1];
+      const t = get('t'), l = get('l');
+      return {
+        node: get('r'),
+        ts: t && t.t === 'num' ? Number(t.raw) : NaN,
+        labels: l && l.t === 'arr' ? l.items.map(p => [valText(p.items[0]), valText(p.items[1])]) : []
+      };
+    });
+  }
+
+  // Open entries and the current entry are renumbered when only the filtered entries are shared.
+  function shareState(subset) {
+    const remap = subset ? new Map(subset.map((e, i) => [e.k, i])) : null;
+    const k = (x) => remap ? remap.get(x) : x;
+    return {
+      mode: LOG.mode,
+      sort: $('sort').value,
+      hideCommon: $('hideCommon').checked,
+      f: subset ? {} : { ...LOG.f },
+      open: [...LOG.open].map(k).filter(x => x != null),
+      cur: LOG.curK == null ? null : (k(LOG.curK) ?? null)
+    };
+  }
+
+  function applyShareState(s) {
+    Object.assign(LOG.f, { q: '', sev: '', mod: '', trace: '', type: '', prob: '' }, s.f || {});
+    LOG.open = new Set((s.open || []).filter(x => x < LOG.entries.length));
+    LOG.curK = s.cur != null && s.cur < LOG.entries.length ? s.cur : null;
+    if (s.sort === 'asc' || s.sort === 'desc') $('sort').value = s.sort;
+    if (typeof s.hideCommon === 'boolean') $('hideCommon').checked = s.hideCommon;
+    $('q').value = LOG.f.q;
+    $('fSev').value = LOG.f.sev;
+    $('fMod').value = LOG.f.mod;
+    $('fTrace').value = LOG.f.trace;
+    renderSummary();
+    renderList();
+    setMode(s.mode);
+    if (LOG.mode === 'list' && LOG.curK != null) entryEl(LOG.curK)?.scrollIntoView({ block: 'start' });
+  }
+
+  function showBanner(text, isError) {
+    $('bannerText').textContent = text;
+    $('banner').classList.toggle('error', !!isError);
+    $('banner').hidden = false;
+  }
+  $('bannerClose').addEventListener('click', () => { $('banner').hidden = true; });
+
+  async function openShare(data) {
+    let p;
+    try { p = await unpack(data); } catch {
+      showBanner('This share link is damaged or incomplete. It may have been cut off when it was pasted.', true);
+      return;
+    }
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    if (p.kind === 'fmt') {
+      input.value = p.data;
+      run();
+      showView('fmtView');
+    } else {
+      if (!loadLogs(p.data, p.name || 'Shared logs')) return;
+      applyShareState(p.state || {});
+    }
+    showBanner(`You opened a shared ${p.kind === 'fmt' ? 'JSON' : 'log view'}${p.name ? ': ' + p.name : ''}. ` +
+      (p.masked ? 'The sender masked sensitive values. ' : '') + 'It stays in this tab only.');
+  }
+
+  function readShareSource() {
+    const m = location.hash.match(/^#share=([\w-]+)$/);
+    if (m) return m[1];
+    const el = document.getElementById('share-data');
+    try { return el ? JSON.parse(el.textContent) : null; } catch { return null; }
+  }
+
+  window.addEventListener('hashchange', () => {
+    const m = location.hash.match(/^#share=([\w-]+)$/);
+    if (m) openShare(m[1]);
+  });
+
+  // ---------- share dialog ----------
+
+  let shareKind = 'logs';
+
+  function openShareDialog(kind) {
+    shareKind = kind;
+    const total = LOG.entries.length;
+    const matching = kind === 'logs' ? filtered().length : 0;
+    $('shareFilteredRow').hidden = kind !== 'logs' || matching === total;
+    $('shareFilteredLabel').textContent = `Only the ${matching} of ${total} entries that match the current filters`;
+    $('shareWhat').textContent = kind === 'logs'
+      ? `Shares the ${LOG.mode === 'flow' ? 'flow diagram' : 'list'} of ${LOG.name} as you see it now, with the same filters, open entries and order.`
+      : 'Shares the text in the formatter input.';
+    $('shareInfo').textContent = '';
+    $('shareInfo').className = 'share-info';
+    $('shareDlg').showModal();
+  }
+
+  function sharePayload() {
+    const mask = $('shareMask').checked;
+    if (shareKind === 'fmt') return { v: 1, kind: 'fmt', masked: mask, data: mask ? maskText(input.value) : input.value };
+    const subset = !$('shareFilteredRow').hidden && $('shareFiltered').checked ? filtered() : null;
+    return { v: 1, kind: 'logs', masked: mask, name: LOG.name, data: shareLogsText(subset || LOG.entries, mask), state: shareState(subset) };
+  }
+
+  const kb = (n) => n < 1024 ? n + ' bytes' : (n / 1024).toFixed(n < 10240 ? 1 : 0) + ' KB';
+
+  function shareInfo(text, kind) {
+    $('shareInfo').textContent = text;
+    $('shareInfo').className = 'share-info' + (kind ? ' ' + kind : '');
+  }
+
+  $('shareLink').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    try {
+      const base = location.protocol === 'file:' ? SITE_URL : location.origin + location.pathname;
+      const url = base + '#share=' + await pack(sharePayload());
+      await copyText(url, btn);
+      if (url.length > CHAT_LIMIT) {
+        shareInfo(`Link copied, but it is ${kb(url.length)}, which is too long for Teams or Slack. Download the HTML file instead, or share fewer entries.`, 'warn');
+      } else {
+        shareInfo(`Link copied (${kb(url.length)}). Anyone with the link can open this view.`, 'ok');
+      }
+    } catch (err) {
+      shareInfo('Could not build the link: ' + err.message, 'warn');
+    }
+  });
+
+  $('shareFile').addEventListener('click', async () => {
+    try {
+      const data = await pack(sharePayload());
+      const html = PAGE_SOURCE.replace('</head>', `<script id="share-data" type="application/json">"${data}"<\/script>\n</head>`);
+      const base = (shareKind === 'fmt' ? 'json' : LOG.name.replace(/\.[^.]+$/, '')).replace(/[^\w.-]+/g, '-').slice(0, 60) || 'shared';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      a.download = `${base}-shared.html`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      shareInfo(`Downloaded ${a.download} (${kb(html.length)}). It opens in any browser, offline too.`, 'ok');
+    } catch (err) {
+      shareInfo('Could not build the file: ' + err.message, 'warn');
+    }
+  });
+
+  $('shareClose').addEventListener('click', () => $('shareDlg').close());
+  $('shareDlg').addEventListener('click', (e) => { if (e.target === $('shareDlg')) $('shareDlg').close(); });
+  $('shareLogs').addEventListener('click', () => openShareDialog('logs'));
+  $('shareFmt').addEventListener('click', () => {
+    if (input.value.trim()) openShareDialog('fmt'); else setStatus('Paste something first, then share it.');
+  });
+
   // ---------- files, drag and drop, tabs ----------
 
   function loadFile(file) {
@@ -2269,8 +2549,13 @@
   }
   if (store.get('view') === 'logView') showView('logView');
   run();
-  guideReady = true;
-  firstTime(guideContext());
+  // A shared view opens without the first-time guide on top of it.
+  const shareSrc = readShareSource();
+  if (shareSrc) openShare(shareSrc).finally(() => { guideReady = true; });
+  else {
+    guideReady = true;
+    firstTime(guideContext());
+  }
 })();
 </script>
 </body>
