@@ -30,9 +30,10 @@ Everything runs in the browser. The page loads no external scripts and sends not
 
 ## Sharing
 
-**Share**, in the log viewer and the formatter, sends the current view to someone else. It works without a server:
+**Share**, in the log viewer and the formatter, sends the current view to someone else. Every option opens the same view: list or flow, filters, open entries and sort order.
 
-- **Copy link** compresses the data into the URL fragment (the part after `#`), which browsers never send to a server. The link opens the same view: list or flow, filters, open entries and sort order. Chat apps cut off very long links, so this suits a few hundred entries.
+- **Copy short link** gives a link of about 100 characters. The browser compresses the data, encrypts it with AES-GCM under a random key, and stores the ciphertext on [jsonblob.com](https://jsonblob.com), a free public service. The link holds the blob id and the key, after `#s=`. Browsers never send the part after `#` to a server, so jsonblob.com sees only ciphertext. jsonblob.com decides how long a blob lives; the dialog shows the expiry date when the service reports one.
+- **Copy full link** compresses the data into the link itself, with no server involved. Chat apps cut off very long links, so this suits up to about a hundred entries.
 - **Download as HTML file** saves a copy of this page with the data inside. It opens in any browser, offline too, and suits large exports.
 
 You can share only the entries that match the current filters. Sensitive values are masked by default: passwords, tokens, secrets, account numbers, names, emails and phone numbers, including inside escaped JSON and query strings, plus anything that looks like a JWT. Masking matches field names, so check the shared view before sending it.

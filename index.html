@@ -494,6 +494,7 @@
   .share-info { min-height: 1.5em; font-size: 12.5px; color: var(--muted); }
   .share-info.ok { color: var(--str); }
   .share-info.warn { color: var(--num); }
+  .share-url { width: 100%; box-sizing: border-box; margin: 6px 0 2px; padding: 6px 8px; font: 12.5px var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
 
   /* ---------- guide ---------- */
   .help-btn { width: 28px; height: 28px; padding: 0; border-radius: 50%; font-weight: 700; }
@@ -682,7 +683,7 @@
     <button role="tab" data-view="fmtView" aria-selected="true">Formatter</button>
     <button role="tab" data-view="logView" aria-selected="false">Log viewer</button>
   </nav>
-  <p>Formats JSON, including JSON inside string values, and reads Grafana log exports. Everything runs in this page. Nothing you paste or open is uploaded.</p>
+  <p>Formats JSON, including JSON inside string values, and reads Grafana log exports. Everything runs in this page. Nothing is uploaded unless you make a short link.</p>
   <div class="tools">
     <div class="font-ctl" role="group" aria-label="Font size">
       <button id="fontDown" title="Smaller text (Ctrl+Alt+-)" aria-label="Smaller text">A&minus;</button>
@@ -785,12 +786,15 @@
       <p id="shareWhat"></p>
       <label class="check" id="shareFilteredRow"><input type="checkbox" id="shareFiltered" checked> <span id="shareFilteredLabel"></span></label>
       <label class="check"><input type="checkbox" id="shareMask" checked> Mask passwords, tokens, secrets, account numbers, names, emails and phone numbers</label>
-      <p class="g-tip">The data travels inside the link or the file, never through a server. Masking matches field names, so open the shared view and check it before you send it.</p>
       <div class="share-actions">
-        <button id="shareLink" class="primary">Copy link</button>
+        <button id="shareShort" class="primary">Copy short link</button>
+        <button id="shareLink">Copy full link</button>
         <button id="shareFile">Download as HTML file</button>
       </div>
+      <input id="shareUrl" class="share-url" readonly hidden aria-label="Share link">
       <p id="shareInfo" class="share-info" aria-live="polite"></p>
+      <p class="g-tip"><b>Short link:</b> your browser encrypts the data and stores only the encrypted copy on jsonblob.com, a free public service. The key is in the link and never leaves it, so jsonblob.com cannot read the data. <b>Full link</b> and <b>HTML file:</b> the data travels inside the link or the file, with no server involved.</p>
+      <p class="g-tip">Masking matches field names, so open the shared view and check it before you send it.</p>
     </div>
   </div>
 </dialog>
@@ -847,10 +851,10 @@
 
     <section class="g-page" data-page="privacy" hidden>
       <ul>
-        <li>Everything runs in your browser. Nothing you paste or open is uploaded, and the page loads no outside scripts.</li>
+        <li>Everything runs in your browser and the page loads no outside scripts. Nothing you paste or open is uploaded, unless you make a short link.</li>
         <li>Theme, text size, indent and the other options are saved in this browser and come back on your next visit.</li>
         <li>Pasted text and the open log file survive a refresh. The browser deletes them when you close the tab, and <b>Clear</b> deletes them straight away.</li>
-        <li>A shared link or file carries the data itself, so anyone who has it can read it. Sensitive values are masked by default: passwords, tokens, secrets, account numbers, names, emails and phone numbers. Masking goes by field name, so check the shared view before sending it.</li>
+        <li>A short link stores an encrypted copy on jsonblob.com, and the key to it is only in the link. A full link or file carries the data itself. Either way, anyone who has the link or file can read the data. Sensitive values are masked by default: passwords, tokens, secrets, account numbers, names, emails and phone numbers. Masking goes by field name, so check the shared view before sending it.</li>
         <li>Log exports can contain account numbers, names and credentials. Share them with care.</li>
       </ul>
       <p class="g-tip">The <b>?</b> button at the top reopens this guide.</p>
@@ -2285,20 +2289,67 @@
   const SHARE_MARK = '{"$share":1,';
   const CHAT_LIMIT = 28000; // roughly where Teams starts cutting messages
 
-  async function pack(obj) {
-    const stream = new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
-    const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  const BLOB_API = 'https://jsonblob.com/api/jsonBlob';
+
+  function toB64url(buf) {
     let bin = '';
     for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  async function unpack(s) {
+  function fromB64url(s) {
     const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-    const bin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
-    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    return Uint8Array.from(atob(b64 + '='.repeat((4 - b64.length % 4) % 4)), c => c.charCodeAt(0));
+  }
+
+  async function deflate(obj) {
+    const stream = new Blob([JSON.stringify(obj)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+
+  async function inflate(bytes) {
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
     return JSON.parse(await new Response(stream).text());
+  }
+
+  const pack = async (obj) => toB64url(await deflate(obj));
+  const unpack = (s) => inflate(fromB64url(s));
+
+  // Short links: jsonblob.com stores only AES-GCM ciphertext; the key exists only in the link fragment.
+  async function uploadShare(obj) {
+    const key = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ck = await crypto.subtle.importKey('raw', key, 'AES-GCM', false, ['encrypt']);
+    const data = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, ck, await deflate(obj)));
+    const res = await fetch(BLOB_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ pf: 1, iv: toB64url(iv), d: toB64url(data) })
+    });
+    if (!res.ok) throw new Error(`jsonblob.com answered ${res.status}${res.status === 413 ? ' (too large)' : ''}`);
+    const id = res.headers.get('X-jsonblob-id') || (res.headers.get('Location') || '').split('/').pop();
+    if (!/^[\w-]+$/.test(id || '')) throw new Error('jsonblob.com did not return an id');
+    return { ref: `${id}.${toB64url(key)}`, expires: res.headers.get('X-jsonblob-expires-at') };
+  }
+
+  async function downloadShare(ref) {
+    const dot = ref.lastIndexOf('.');
+    let res;
+    try {
+      res = await fetch(`${BLOB_API}/${ref.slice(0, dot)}`, { headers: { Accept: 'application/json' } });
+    } catch {
+      throw new Error('Could not reach jsonblob.com to open this short link. Check your connection and reload.');
+    }
+    if (res.status === 404) throw new Error('This short link has expired or was removed. Ask the sender for a new one.');
+    if (!res.ok) throw new Error(`Could not open this short link: jsonblob.com answered ${res.status}.`);
+    try {
+      const blob = await res.json();
+      const ck = await crypto.subtle.importKey('raw', fromB64url(ref.slice(dot + 1)), 'AES-GCM', false, ['decrypt']);
+      const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromB64url(blob.iv) }, ck, fromB64url(blob.d));
+      return await inflate(new Uint8Array(plain));
+    } catch {
+      throw new Error('This short link is damaged or incomplete. It may have been cut off when it was pasted.');
+    }
   }
 
   // Field names whose values are hidden. Matched at any level of string escaping, so JSON inside strings is covered.
@@ -2385,11 +2436,20 @@
   }
   $('bannerClose').addEventListener('click', () => { $('banner').hidden = true; });
 
-  async function openShare(data) {
+  // src is { packed } from a full link or file, or { short } from a short link.
+  async function openShare(src) {
     let p;
-    try { p = await unpack(data); } catch {
-      showBanner('This share link is damaged or incomplete. It may have been cut off when it was pasted.', true);
-      return;
+    if (src.short) {
+      showBanner('Opening the shared view…');
+      try { p = await downloadShare(src.short); } catch (err) {
+        showBanner(err.message, true);
+        return;
+      }
+    } else {
+      try { p = await unpack(src.packed); } catch {
+        showBanner('This share link is damaged or incomplete. It may have been cut off when it was pasted.', true);
+        return;
+      }
     }
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
     if (p.kind === 'fmt') {
@@ -2404,16 +2464,21 @@
       (p.masked ? 'The sender masked sensitive values. ' : '') + 'It stays in this tab only.');
   }
 
+  function hashShare() {
+    const m = location.hash.match(/^#(?:share=([\w-]+)|s=([\w-]+\.[\w-]+))$/);
+    return m ? (m[1] ? { packed: m[1] } : { short: m[2] }) : null;
+  }
+
   function readShareSource() {
-    const m = location.hash.match(/^#share=([\w-]+)$/);
-    if (m) return m[1];
+    const fromHash = hashShare();
+    if (fromHash) return fromHash;
     const el = document.getElementById('share-data');
-    try { return el ? JSON.parse(el.textContent) : null; } catch { return null; }
+    try { return el ? { packed: JSON.parse(el.textContent) } : null; } catch { return null; }
   }
 
   window.addEventListener('hashchange', () => {
-    const m = location.hash.match(/^#share=([\w-]+)$/);
-    if (m) openShare(m[1]);
+    const src = hashShare();
+    if (src) openShare(src);
   });
 
   // ---------- share dialog ----------
@@ -2431,6 +2496,7 @@
       : 'Shares the text in the formatter input.';
     $('shareInfo').textContent = '';
     $('shareInfo').className = 'share-info';
+    $('shareUrl').hidden = true;
     $('shareDlg').showModal();
   }
 
@@ -2448,14 +2514,42 @@
     $('shareInfo').className = 'share-info' + (kind ? ' ' + kind : '');
   }
 
+  const shareBase = () => location.protocol === 'file:' ? SITE_URL : location.origin + location.pathname;
+
+  // The link also goes in a text box, because some browsers refuse clipboard writes after a slow upload.
+  function showShareUrl(url) {
+    $('shareUrl').value = url;
+    $('shareUrl').hidden = false;
+    $('shareUrl').select();
+  }
+  $('shareUrl').addEventListener('focus', (e) => e.target.select());
+
+  $('shareShort').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    shareInfo('Encrypting and uploading…');
+    try {
+      const { ref, expires } = await uploadShare(sharePayload());
+      const url = shareBase() + '#s=' + ref;
+      showShareUrl(url);
+      await copyText(url, btn);
+      const until = expires && !isNaN(Date.parse(expires)) ? ` It works until ${new Date(expires).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}.` : '';
+      shareInfo(`Short link copied. Anyone with the link can open this view.${until}`, 'ok');
+    } catch (err) {
+      shareInfo(`Could not make a short link: ${err.message}. Use the full link or the HTML file instead.`, 'warn');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
   $('shareLink').addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     try {
-      const base = location.protocol === 'file:' ? SITE_URL : location.origin + location.pathname;
-      const url = base + '#share=' + await pack(sharePayload());
+      const url = shareBase() + '#share=' + await pack(sharePayload());
+      $('shareUrl').hidden = true;
       await copyText(url, btn);
       if (url.length > CHAT_LIMIT) {
-        shareInfo(`Link copied, but it is ${kb(url.length)}, which is too long for Teams or Slack. Download the HTML file instead, or share fewer entries.`, 'warn');
+        shareInfo(`Link copied, but it is ${kb(url.length)}, which is too long for Teams or Slack. Use the short link or the HTML file instead.`, 'warn');
       } else {
         shareInfo(`Link copied (${kb(url.length)}). Anyone with the link can open this view.`, 'ok');
       }
