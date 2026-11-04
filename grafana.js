@@ -7,7 +7,7 @@
   // __pfSite lets a local copy of the page be tested against real Grafana data.
   const SITE = window.__pfSite || 'https://shreyasjejurkar-pf.github.io/json-formatter/';
   const SITE_ORIGIN = new URL(SITE).origin;
-  const ENVS = { 'ig-prod': 6, 'ig-qa': 3, 'ig-uat': 5, 'ige-prod': 7, 'ige-qa': 2, 'ige-uat': 4 };
+  const ENVS = { 'ig-prod': 6, 'ig-qa': 3, 'ige-prod': 7, 'ige-qa': 2 };
   const MAX_TRACES = 30;
   const DAY = 864e5;
 

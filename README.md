@@ -60,7 +60,7 @@ The **Log viewer** tab opens a Grafana logs panel CSV export, a JSON array of lo
 The page cannot query Grafana itself: Grafana sends no CORS headers, refuses to be framed, and its login cookie is not sent to other sites. A bookmarklet runs the queries from a logged-in Grafana tab instead.
 
 1. Drag **Trace in formatter** from the Log viewer's open-file page to the bookmarks bar. The bookmark loads [`grafana.js`](grafana.js) from this site into the current tab.
-2. On `grafana.payfuture.net`, click it, enter a transaction ID or a 32-character trace ID, and pick the environment (`ig-prod`, `ig-qa`, `ig-uat`, `ige-prod`, `ige-qa`, `ige-uat`, mapped to Grafana orgs 6, 3, 5, 7, 2 and 4).
+2. On `grafana.payfuture.net`, click it, enter a transaction ID or a 32-character trace ID, and pick the environment (`ig-prod`, `ig-qa`, `ige-prod`, `ige-qa`, mapped to Grafana orgs 6, 3, 7 and 2).
 3. `grafana.js` searches Loki for the ID across all services, one day per query. An `INV...` ID ends in its creation time in ms, so the search runs from 15 minutes before that time to 3 days after it. It collects every `traceid` on the matching lines, fetches each trace from Tempo, and then fetches every log line of each trace from Loki.
 4. It opens this page with `#grafana`. The page replies `ready`, and `grafana.js` posts progress and then the data with `postMessage`. Both sides check the other's origin. Nothing goes through a server.
 
