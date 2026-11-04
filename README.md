@@ -55,6 +55,26 @@ The **Log viewer** tab opens a Grafana logs panel CSV export, a JSON array of lo
 - Each entry can be copied as JSON or opened in the formatter.
 - **Flow** draws the entries as a sequence diagram between Merchant, PayFuture and Provider, using the `LogType` attribute (`API-MerchantRequestReceived`, `API-MerchantResponseSent`, `API-GatewayRequestSent`, `API-GatewayResponseReceived`, `API-GatewayWebhookReceived`, `API-MerchantCallbackSent`). Each response is paired with its request in the same trace to show the round-trip time and any status code. Log lines between calls collapse into an "internal steps" marker, and pauses of 2 s or more are marked. Hovering over an arrow shows its payload, formatted, in a popover. Clicking an arrow opens that entry, and **Back to flow** returns to the same spot in the diagram. Exceptions and errors appear as red and amber markers, and failed responses (4xx, 5xx, Unauthorized and similar) as red arrows. For integration modules that never log a `LogType`, calls are inferred from "...request: {...}" and "...response..." messages and marked "inferred".
 
+## Timeline from Grafana
+
+The page cannot query Grafana itself: Grafana sends no CORS headers, refuses to be framed, and its login cookie is not sent to other sites. A bookmarklet runs the queries from a logged-in Grafana tab instead.
+
+1. Drag **Trace in formatter** from the Log viewer's open-file page to the bookmarks bar. The bookmark loads [`grafana.js`](grafana.js) from this site into the current tab.
+2. On `grafana.payfuture.net`, click it, enter a transaction ID or a 32-character trace ID, and pick the environment (`ig-prod`, `ig-qa`, `ig-uat`, `ige-prod`, `ige-qa`, `ige-uat`, mapped to Grafana orgs 6, 3, 5, 7, 2 and 4).
+3. `grafana.js` searches Loki for the ID across all services, one day per query. An `INV...` ID ends in its creation time in ms, so the search runs from 15 minutes before that time to 3 days after it. It collects every `traceid` on the matching lines, fetches each trace from Tempo, and then fetches every log line of each trace from Loki.
+4. It opens this page with `#grafana`. The page replies `ready`, and `grafana.js` posts progress and then the data with `postMessage`. Both sides check the other's origin. Nothing goes through a server.
+
+The page loads the log lines as if they were a Grafana CSV export, so List, Flow and Share work as usual, and opens the **Timeline** view:
+
+- One card per request, in time order, with the time between cards.
+- A bar that splits the request's time into Database, Outgoing calls, Queue (publish), Our code, Ingress and Waiting (no span running, such as a message sitting in a queue). Where steps overlap, the time goes to the most specific one, so the parts add up to the request's duration.
+- The three slowest database or HTTP calls.
+- A waterfall of spans, indented by parent. Three or more back-to-back database calls of the same shape are grouped. Hovering over a bar shows its SQL, URL, status, exceptions and the log lines written in that span (matched by `spanid`).
+- Log lines appear as marks on their span's bar; red marks are exceptions and errors. Clicking one opens the entry, and **Back to timeline** returns.
+- Lines with no trace id, such as the scheduler's merchant callbacks, are grouped by service and time (lines less than 5 s apart) into cards of their own.
+
+Only span attributes that describe the call are kept: HTTP method, route, status and URL without its query string, server address, SQL text, messaging and exception attributes. Client addresses and user agents are dropped. Spans are kept in `sessionStorage` with the log lines, and shared links include them, masked like the log lines.
+
 ## First-time guide
 
 A short guide opens the first time someone uses the formatter, the log viewer and the flow view. Each page is marked as seen with a flag in `localStorage`, so it shows once per browser. The **?** button in the header reopens it.
