@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JSON Formatter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap">
 <meta name="description" content="Formats JSON, including JSON embedded inside string values such as log messages. Runs entirely in the browser.">
 <style>
   :root {
@@ -17,8 +20,8 @@
     --accent-soft: rgba(0, 61, 78, .25);
     --brand: #f7ea03;
     --on-brand: #003d4e;
-    --strong: #003d4e;
-    --on-strong: #ffffff;
+    --strong: #163a4d;
+    --on-strong: #f7ea03;
     --header-bg: #ffffff;
     --key: #8a2c8f;
     --str: #1b7337;
@@ -28,6 +31,7 @@
     --err: #b3261e;
     --badge-bg: #e7f4fc;
     --btn-hover: #e7f4fc;
+    --ui: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
     --indent: 2ch;
     --code-size: 13px;
@@ -88,7 +92,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font: 14px/1.45 var(--ui);
     display: flex;
     flex-direction: column;
   }
@@ -188,10 +192,32 @@
   }
   select { padding: 3px 4px; background: var(--panel); }
   button:hover { background: var(--btn-hover); }
-  button.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 600; }
-  button.primary:hover { background: #e6da00; border-color: #e6da00; }
-  #copyPayload { background: var(--strong); border-color: var(--strong); color: var(--on-strong); font-weight: 600; }
-  #copyPayload:hover { opacity: .88; }
+  /* Same pair as payfuture.net buttons: yellow at rest, navy with yellow text on hover. */
+  button.primary, #copyPayload, .payload-btn {
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 4px 12px;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  button.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  button.primary:hover, #copyPayload, .payload-btn { background: var(--strong); border-color: var(--strong); color: var(--on-strong); }
+  #copyPayload:hover, .payload-btn:hover { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  .find { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .find input {
+    flex: 1;
+    min-width: 0;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+  .find input:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  .find-count { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .find button { padding: 3px 7px; font-size: 11px; }
+  mark.hit { background: var(--brand); color: var(--on-brand); border-radius: 2px; }
+  mark.hit.cur { outline: 2px solid var(--strong); outline-offset: 1px; }
   label.check { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
 
   textarea {
@@ -217,7 +243,7 @@
   .out:empty::before {
     content: "Formatted output appears here.";
     color: var(--muted);
-    font-family: system-ui, sans-serif;
+    font-family: var(--ui);
   }
   .ln {
     position: relative;
@@ -239,7 +265,7 @@
 
   .badge {
     display: inline-block;
-    font: 600 10.5px/1.6 system-ui, sans-serif;
+    font: 600 10.5px/1.6 var(--ui);
     color: var(--accent);
     background: var(--badge-bg);
     border-radius: 4px;
@@ -399,7 +425,7 @@
     border-radius: 6px;
     background: color-mix(in srgb, var(--err) 14%, var(--panel));
     color: var(--text);
-    font: 12px/1.4 system-ui, sans-serif;
+    font: 12px/1.4 var(--ui);
     text-align: left;
   }
   .pbox:hover { background: color-mix(in srgb, var(--err) 22%, var(--panel)); }
@@ -463,7 +489,7 @@
   .tl-head .dot { display: inline-block; align-self: center; }
   .tl-meta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
   .tl-head button { margin-left: auto; font-size: 12px; padding: 1px 9px; }
-  .code { font: 600 11px/1.6 system-ui, sans-serif; padding: 0 6px; border-radius: 4px; background: color-mix(in srgb, var(--str) 16%, transparent); color: var(--str); }
+  .code { font: 600 11px/1.6 var(--ui); padding: 0 6px; border-radius: 4px; background: color-mix(in srgb, var(--str) 16%, transparent); color: var(--str); }
   .code.warn { background: color-mix(in srgb, var(--num) 16%, transparent); color: var(--num); }
   .code.bad { background: var(--err); color: var(--panel); }
   .tl-stack { display: flex; height: 14px; margin: 10px 0 6px; border-radius: 4px; overflow: hidden; background: var(--bg); }
@@ -534,7 +560,7 @@
   .pop .kv { border-collapse: collapse; width: 100%; font: 12px/1.5 var(--mono); }
   .pop .kv th { text-align: left; vertical-align: top; color: var(--key); font-weight: normal; padding: 1px 12px 1px 0; white-space: nowrap; width: 1%; }
   .pop .kv td { overflow-wrap: anywhere; white-space: pre-wrap; padding: 1px 0; }
-  .pop h4 { margin: 10px 0 4px; font: 600 11px/1.6 system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .pop h4 { margin: 10px 0 4px; font: 600 11px/1.6 var(--ui); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
   .pop .plog { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 4px; padding: 1px 4px; font: 12px/1.5 var(--mono); background: none; }
   .pop .plog:hover { background: var(--btn-hover); }
   .pop .plog .msg { white-space: nowrap; }
@@ -586,7 +612,7 @@
     border-bottom: 1px solid var(--border);
     font: 12.5px/1.5 var(--mono);
   }
-  .pop-meta { font: 600 11.5px/1.5 system-ui, sans-serif; color: var(--accent); }
+  .pop-meta { font: 600 11.5px/1.5 var(--ui); color: var(--accent); }
   .pop-body {
     flex: 1;
     min-height: 0;
@@ -670,7 +696,7 @@
   .g-foot button:disabled { opacity: .4; cursor: default; }
 
   .srcbox { border: 0; border-radius: 6px; margin: 4px 0 8px; }
-  .hint { color: var(--muted); font: 12.5px system-ui, sans-serif; margin: 6px 0 0; }
+  .hint { color: var(--muted); font: 12.5px var(--ui); margin: 6px 0 0; }
   .entry { scroll-margin-top: 96px; }
 
   /* ---------- log viewer ---------- */
@@ -782,12 +808,12 @@
   .delta { color: var(--muted); min-width: 8ch; white-space: nowrap; font-size: .9em; font-variant-numeric: tabular-nums; }
   .delta.slow { color: var(--num); }
   .delta.gap { color: var(--err); font-weight: 600; }
-  .sev { font: 600 11px/1.6 system-ui, sans-serif; padding: 0 5px; border-radius: 4px; background: var(--btn-hover); color: var(--muted); }
+  .sev { font: 600 11px/1.6 var(--ui); padding: 0 5px; border-radius: 4px; background: var(--btn-hover); color: var(--muted); }
   .sev-error, .sev-fatal { background: var(--err); color: var(--panel); }
   .sev-warn { background: var(--num); color: var(--panel); }
   .sev-info { color: var(--accent); background: var(--badge-bg); }
   .mod { color: var(--key); white-space: nowrap; }
-  .ltype { font: 600 11px/1.6 system-ui, sans-serif; color: var(--str); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
+  .ltype { font: 600 11px/1.6 var(--ui); color: var(--str); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; white-space: nowrap; }
   .msg { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .detail { padding: 6px 14px 12px 3.4ch; border-top: 1px solid var(--border); font: var(--code-size)/1.5 var(--mono); }
@@ -798,12 +824,17 @@
   .fields th { color: var(--key); font-weight: normal; white-space: nowrap; width: 1%; padding-right: 3ch; }
   .fields tr.sec th {
     color: var(--muted);
-    font: 600 11px/1.6 system-ui, sans-serif;
+    font: 600 11px/1.6 var(--ui);
     text-transform: uppercase;
     letter-spacing: .04em;
     padding-top: 8px;
   }
-  .dactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-family: system-ui, sans-serif; }
+  .fields tr.sec th { cursor: pointer; user-select: none; }
+  .fields tr.sec th::before { content: "\25BE"; display: inline-block; width: 1.4ch; }
+  .fields tbody.shut tr.sec th::before { content: "\25B8"; }
+  .fields tbody.shut tr:not(.sec) { display: none; }
+  .fields tbody.shut tr.sec th::after { content: attr(data-n); text-transform: none; font-weight: normal; font-style: italic; margin-left: 1ch; }
+  .dactions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; font-family: var(--ui); }
 
   @media (max-width: 860px) {
     html, body { height: auto; }
@@ -875,6 +906,12 @@
       <button id="shareFmt" title="Share this JSON as a link or a file">Share</button>
       <button id="copyPayload" title="Copy only the request or response JSON from the log body" hidden>Copy payload</button>
       <button id="copy" class="primary">Copy</button>
+    </div>
+    <div id="findBar" class="find" hidden>
+      <input id="find" type="search" placeholder="Search keys and values (Ctrl+F)" spellcheck="false" autocomplete="off" aria-label="Search the output">
+      <span id="findCount" class="find-count"></span>
+      <button id="findPrev" title="Previous match (Shift+Enter)" aria-label="Previous match">&#9650;</button>
+      <button id="findNext" title="Next match (Enter)" aria-label="Next match">&#9660;</button>
     </div>
     <div id="source" class="source" hidden></div>
     <div id="out" class="out"></div>
@@ -981,6 +1018,7 @@
         <li>Click any <code>{</code> or <code>[</code> to fold it. <b>Collapse</b> folds everything below the top level and <b>Expand</b> opens it again.</li>
         <li><b>Copy</b> copies the output with the indent you picked.</li>
         <li>Drag the bar between Input and Output to resize them. Double-click it to reset.</li>
+        <li><b>Ctrl+F</b> searches keys and values in the output and opens folded sections that contain a match. Enter goes to the next match, Shift+Enter to the previous one.</li>
         <li>On a log entry, <code>attributes</code> and <code>resources</code> start folded because they hold trace data. <b>Copy payload</b> copies only the request or response JSON from the log body.</li>
       </ol>
       <p class="g-tip">You can also drop a .json file anywhere on the page. <b>A&minus;</b> and <b>A+</b> change the text size.</p>
@@ -1273,7 +1311,8 @@
           .map(x => x.node ? renderText(x.node, ctx, level, embDepth + 1) : JSON.stringify(x.text))
           .join(' + ');
       }
-      case 'num': case 'bool': case 'word': return node.raw;
+      case 'num': case 'bool': return node.raw;
+      case 'word': return ctx.quoteWords ? JSON.stringify(node.raw) : node.raw;
       case 'null': return 'null';
     }
     const isObj = node.t === 'obj';
@@ -1356,6 +1395,7 @@
     document.documentElement.style.setProperty('--indent', indentSel.value === 'tab' ? '4ch' : indentSel.value + 'ch');
     renderSource(null);
     $('copyPayload').hidden = true;
+    $('findBar').hidden = true;
 
     if (!session.set('input', text)) session.del('input');
     if (!text.trim()) { result = null; out.innerHTML = ''; setStatus(''); return; }
@@ -1431,7 +1471,85 @@
       fold.querySelector(':scope > .tg').setAttribute('aria-expanded', 'false');
     });
     $('copyPayload').hidden = !payloadNodes().length;
+    $('findBar').hidden = false;
+    runFind(false);
   }
+
+  // ---------- search in output ----------
+
+  const findBox = $('find');
+  let hits = [], hitIdx = -1;
+
+  function clearFind() {
+    out.querySelectorAll('mark.hit').forEach(m => {
+      const p = m.parentNode;
+      p.replaceChild(document.createTextNode(m.textContent), m);
+      p.normalize();
+    });
+    hits = []; hitIdx = -1;
+  }
+
+  // Leaves are text-only spans, so marks can be spliced into their text without touching structure.
+  function runFind(jump) {
+    clearFind();
+    const q = findBox.value.trim().toLowerCase();
+    if (!q) { $('findCount').textContent = ''; return; }
+    for (const el of out.querySelectorAll('.k, .s, .n, .b, .z, .t, .raw')) {
+      const text = el.textContent, low = text.toLowerCase();
+      let at = low.indexOf(q);
+      if (at < 0) continue;
+      const frag = document.createDocumentFragment();
+      let last = 0;
+      while (at >= 0) {
+        frag.append(text.slice(last, at));
+        const m = document.createElement('mark');
+        m.className = 'hit';
+        m.textContent = text.slice(at, at + q.length);
+        frag.append(m);
+        hits.push(m);
+        last = at + q.length;
+        at = low.indexOf(q, last);
+      }
+      frag.append(text.slice(last));
+      el.replaceChildren(frag);
+    }
+    $('findCount').textContent = hits.length ? '' : 'No matches';
+    if (hits.length) gotoHit(0, jump);
+  }
+
+  function gotoHit(i, scroll) {
+    if (!hits.length) return;
+    hits[hitIdx]?.classList.remove('cur');
+    hitIdx = (i + hits.length) % hits.length;
+    const m = hits[hitIdx];
+    m.classList.add('cur');
+    for (let f = m.closest('.fold'); f; f = f.parentElement.closest('.fold')) {
+      if (!f.classList.contains('collapsed')) continue;
+      f.classList.remove('collapsed');
+      f.querySelector(':scope > .tg').setAttribute('aria-expanded', 'true');
+    }
+    $('findCount').textContent = `${hitIdx + 1} of ${hits.length}`;
+    if (scroll) m.scrollIntoView({ block: 'center' });
+  }
+
+  let findTimer = 0;
+  findBox.addEventListener('input', () => {
+    clearTimeout(findTimer);
+    findTimer = setTimeout(() => runFind(true), 150);
+  });
+  findBox.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); gotoHit(hitIdx + (e.shiftKey ? -1 : 1), true); }
+    else if (e.key === 'Escape') { findBox.value = ''; runFind(false); }
+  });
+  $('findNext').addEventListener('click', () => gotoHit(hitIdx + 1, true));
+  $('findPrev').addEventListener('click', () => gotoHit(hitIdx - 1, true));
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f' && !$('fmtView').hidden && !$('findBar').hidden) {
+      e.preventDefault();
+      findBox.focus();
+      findBox.select();
+    }
+  });
 
   // The request or response JSON inside the log body, e.g. "SubmitPayout request: {...}".
   function payloadNodes() {
@@ -1449,9 +1567,16 @@
     return found;
   }
 
+  const jsonIn = (text) => text ? findJson(text, true).filter(x => x.node).map(x => x.node) : [];
+
+  // Quotes bare words like REDACTED so the copy pastes into Postman as valid JSON.
+  const payloadText = (nodes) => {
+    const ctx = { expand: expandBox.checked, unit: indentUnit(), quoteWords: true };
+    return nodes.map(n => renderText(n, ctx, 0, 1)).join('\n\n');
+  };
+
   $('copyPayload').addEventListener('click', (e) => {
-    const ctx = { expand: expandBox.checked, unit: indentUnit() };
-    const text = payloadNodes().map(n => renderText(n, ctx, 0, 1)).join('\n\n');
+    const text = payloadText(payloadNodes());
     if (text) copyText(text, e.currentTarget);
   });
 
@@ -1476,6 +1601,8 @@
   document.addEventListener('keydown', (e) => {
     const tg = e.target.closest('.tg');
     if (tg && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggle(tg); }
+    const sec = e.target.closest?.('.fields tr.sec th');
+    if (sec && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sec.closest('tbody').classList.toggle('shut'); }
   });
 
   function setAll(collapsed) {
@@ -2004,11 +2131,17 @@
   const ID_KEY = /(^|\.)(merchant_?ref_?no|order_?id|payment_?id|payout_?id|unique_?reference|reference\d?|utr)$/i;
 
   function fieldsTable(fields, ctx) {
-    let html = '', sec = null;
+    const groups = [];
     for (const f of fields) {
-      if (f.sec !== sec) { sec = f.sec; html += `<tr class="sec"><th colspan="2">${esc(sec || 'entry')}</th></tr>`; }
-      html += `<tr><th>${esc(f.key)}</th><td class="ln">${renderHtml(f.node, ctx, 0, false)}</td></tr>`;
+      if (!groups.length || groups[groups.length - 1].sec !== f.sec) groups.push({ sec: f.sec, rows: [] });
+      groups[groups.length - 1].rows.push(`<tr><th>${esc(f.key)}</th><td class="ln">${renderHtml(f.node, ctx, 0, false)}</td></tr>`);
     }
+    const html = groups.map(g => {
+      const n = g.rows.length;
+      return `<tbody${TRACE_KEYS.has(g.sec.toLowerCase()) ? ' class="shut"' : ''}>` +
+        `<tr class="sec"><th colspan="2" tabindex="0" data-n="${n} field${n === 1 ? '' : 's'}">${esc(g.sec || 'entry')}</th></tr>` +
+        g.rows.join('') + '</tbody>';
+    }).join('');
     return html ? `<table class="fields">${html}</table>` : '';
   }
 
@@ -2134,7 +2267,9 @@
     return `<div class="dmsg">${msgHtml(e.body, ctx)}</div>` +
       fieldsTable(fields, ctx) +
       (hidden ? `<p class="hint">${hidden} common field${hidden === 1 ? ' is' : 's are'} hidden. The summary lists them.</p>` : '') +
-      `<div class="dactions"><button data-act="copy">Copy entry as JSON</button><button data-act="fmt">Open in formatter</button>` +
+      `<div class="dactions">` +
+      (jsonIn(e.body).length ? '<button data-act="payload" class="payload-btn" title="Copy only the request or response JSON from the message">Copy payload</button>' : '') +
+      `<button data-act="copy">Copy entry as JSON</button><button data-act="fmt">Open in formatter</button>` +
       (e.trace && LOG.traceIdx.size > 1 && LOG.f.trace !== e.trace ? '<button data-act="trace">Show only this trace</button>' : '') +
       '</div>';
   }
@@ -2867,7 +3002,10 @@
     if (!entry) return;
     const e = LOG.entries[+entry.dataset.k];
     if (ev.target.closest('summary')) { setCur(e.k); return; }
+    const secTh = ev.target.closest('.fields tr.sec th');
+    if (secTh) { secTh.closest('tbody').classList.toggle('shut'); return; }
     const btn = ev.target.closest('button[data-act]');
+    if (btn?.dataset.act === 'payload') { copyText(payloadText(jsonIn(e.body)), btn); return; }
     if (!btn) return;
     const json = renderText(e.node, { expand: false, unit: '  ' }, 0, 0);
     if (btn.dataset.act === 'copy') copyText(json, btn);
