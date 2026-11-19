@@ -589,14 +589,17 @@
   }
 
   /* ---------- flow popover ---------- */
+  /* Docked beside the flow rather than floating over it; #logView gets matching padding so nothing hides under it. */
+  :root { --dock-w: clamp(360px, 36vw, 640px); --dock-top: 120px; }
   .pop {
     position: fixed;
     z-index: 50;
     display: flex;
     flex-direction: column;
-    /* placePop sets width and max-height from the space beside the cursor. */
-    width: min(620px, calc(100vw - 16px));
-    max-height: calc(100vh - 16px);
+    top: var(--dock-top);
+    right: 16px;
+    bottom: 16px;
+    width: var(--dock-w);
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -631,6 +634,13 @@
     color: var(--muted);
   }
   .pop-foot span { flex: 1; }
+  .pop-x { margin-left: auto; padding: 0 8px; font: 16px/1.4 var(--ui); }
+  body.docked #logView { padding-right: calc(var(--dock-w) + 28px); }
+  .arrow.pop-cur, .pbox.pop-cur, .tl-bar.pop-cur { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+  @media (max-width: 860px) {
+    .pop { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 45vh; }
+    body.docked #logView { padding-right: 16px; padding-bottom: calc(45vh + 24px); }
+  }
 
   /* ---------- sharing ---------- */
   .banner {
@@ -989,7 +999,7 @@
   </div>
 </main>
 
-<div id="pop" class="pop" role="tooltip" hidden></div>
+<div id="pop" class="pop" role="complementary" aria-label="Entry details" hidden></div>
 
 <dialog id="shareDlg" aria-labelledby="shareTitle">
   <div class="g-body">
@@ -1062,7 +1072,7 @@
         <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
         <li>A red <b>&#9888; Exception</b> box marks an exception and an amber <b>&#9888; Error</b> box marks a logged error. A red arrow is a failed response, such as <code>Unauthorized</code> or a 4xx or 5xx status. Hover over a box to see the stack trace.</li>
         <li>Some integrations log their provider calls without a LogType. For those, arrows come from messages like "SubmitPayout request: {...}" and are marked <i>inferred</i>.</li>
-        <li>Hover over an arrow to see its payload, formatted. Click the arrow to open the entry in the list, and use <b>&larr; Back to flow</b> to return to the same spot.</li>
+        <li>Hover over an arrow to see its payload, formatted, in a panel on the right. The panel stays open while you hover other arrows; close it with &times; or Esc. Click the arrow to open the entry in the list, and use <b>&larr; Back to flow</b> to return to the same spot.</li>
         <li>Click a trace in the summary to see one request's flow on its own.</li>
       </ol>
       <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Other entries count as internal steps unless they are exceptions or errors.</p>
@@ -2065,6 +2075,7 @@
       if (LOG.mode === 'timeline') setMode('flow');
       // A new file starts with the summary folded so the log lines come first.
       $('summary').classList.add('shut');
+      hidePop();
       LOG.kept = session.set('logText', text) && session.set('logName', name);
       if (!LOG.kept) { session.del('logText'); session.del('logName'); }
     }
@@ -2095,6 +2106,7 @@
     session.del('logState');
     session.del('traceData');
     Object.assign(LOG, { name: '', entries: [], open: new Set(), curK: null, view: [], kept: false });
+    hidePop();
     setTraces(null);
     if (LOG.mode === 'timeline') setMode('flow');
     $('list').innerHTML = '';
@@ -2533,6 +2545,7 @@
   // ---------- flow popover ----------
 
   const pop = $('pop');
+  const POP_CLOSE = '<button class="pop-x" data-close title="Close (Esc)" aria-label="Close">&times;</button>';
   const canHover = window.matchMedia('(hover: hover)').matches;
   let popK = null, popTimer = 0, popAnchor = null;
 
@@ -2549,9 +2562,9 @@
         `<div class="pop-head"><span class="num">#${e.k + 1}</span>` +
         `<span class="time">${Number.isFinite(e.t) ? fmtTime(e.t) : ''}</span>` +
         (e.module ? `<span class="mod">${esc(e.module)}</span>` : '') +
-        `<span class="pop-meta">${esc(meta)}</span></div>` +
+        `<span class="pop-meta">${esc(meta)}</span>${POP_CLOSE}</div>` +
         `<div class="pop-body dmsg">${msgHtml(e.body, ctx) || '<span class="hint">No message.</span>'}</div>` +
-        `<div class="pop-foot"><span>${canHover ? 'Click the arrow to open this entry in the list.' : ''}</span>` +
+        `<div class="pop-foot"><span>${canHover ? 'Hover another arrow to switch. Click an arrow to open its entry in the list.' : ''}</span>` +
         `<button data-open="${k}">Open entry</button></div>`;
       pop.scrollTop = 0;
     }
@@ -2560,57 +2573,22 @@
     placePop(btn);
   }
 
-  // Last pointer position, so the popover opens at the cursor and follows it along the arrow.
-  let pointer = null;
-  document.addEventListener('mousemove', (e) => { pointer = { x: e.clientX, y: e.clientY }; }, { passive: true });
-
-  const POP_GAP = 18, POP_EDGE = 8, POP_MIN_W = 360, POP_MAX_W = 760;
-
-  // Beside the cursor on the roomier side, sized to that space, so the row under the cursor stays visible.
-  // On narrow screens, above or below the cursor instead.
+  // Docks the panel below the log toolbar and marks the arrow it describes.
   function placePop(btn) {
-    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
-    const r = btn.getBoundingClientRect();
-    const onBtn = pointer && pointer.x >= r.left - 2 && pointer.x <= r.right + 2 && pointer.y >= r.top - 2 && pointer.y <= r.bottom + 2;
-    const x = onBtn ? pointer.x : r.left + r.width / 2;
-    const y = onBtn ? pointer.y : r.top + r.height / 2;
-    const roomRight = vw - x - POP_GAP - POP_EDGE, roomLeft = x - POP_GAP - POP_EDGE;
-    const side = Math.max(roomRight, roomLeft);
-    let left, top;
-    if (side >= POP_MIN_W) {
-      const w = Math.min(POP_MAX_W, side);
-      pop.style.width = w + 'px';
-      pop.style.maxHeight = (vh - 2 * POP_EDGE) + 'px';
-      const h = pop.offsetHeight;
-      left = roomRight >= roomLeft ? x + POP_GAP : x - POP_GAP - w;
-      // A third above the cursor, so the eye lands near the top of the payload.
-      top = Math.min(Math.max(POP_EDGE, y - h / 3), vh - h - POP_EDGE);
-    } else {
-      const w = Math.min(POP_MAX_W, vw - 2 * POP_EDGE);
-      const roomBelow = vh - Math.max(y, r.bottom) - POP_GAP - POP_EDGE, roomAbove = Math.min(y, r.top) - POP_GAP - POP_EDGE;
-      const below = roomBelow >= roomAbove;
-      pop.style.width = w + 'px';
-      pop.style.maxHeight = Math.max(160, below ? roomBelow : roomAbove) + 'px';
-      const h = pop.offsetHeight;
-      left = Math.min(Math.max(POP_EDGE, x - w / 2), vw - w - POP_EDGE);
-      top = below ? Math.max(y, r.bottom) + POP_GAP : Math.min(y, r.top) - POP_GAP - h;
-    }
-    pop.style.left = left + 'px';
-    pop.style.top = Math.max(POP_EDGE, top) + 'px';
+    const top = Math.max(8, $('logView').getBoundingClientRect().top + 12);
+    document.documentElement.style.setProperty('--dock-top', top + 'px');
+    document.querySelectorAll('.pop-cur').forEach(el => el.classList.remove('pop-cur'));
+    btn.classList.add('pop-cur');
+    document.body.classList.add('docked');
   }
 
-  // Follow the cursor while it moves along the hovered arrow or bar; stop once it leaves, so it can reach the popover.
-  let popFrame = 0;
-  document.addEventListener('mousemove', (e) => {
-    if (pop.hidden || !popAnchor || popFrame || pop.contains(e.target)) return;
-    const r = popAnchor.getBoundingClientRect();
-    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
-    popFrame = requestAnimationFrame(() => { popFrame = 0; if (!pop.hidden && popAnchor) placePop(popAnchor); });
-  }, { passive: true });
-
-  function hidePop(delay = 0) {
+  function hidePop() {
     clearTimeout(popTimer);
-    popTimer = setTimeout(() => { pop.hidden = true; popK = null; popAnchor = null; }, delay);
+    pop.hidden = true;
+    popK = null;
+    popAnchor = null;
+    document.body.classList.remove('docked');
+    document.querySelectorAll('.pop-cur').forEach(el => el.classList.remove('pop-cur'));
   }
 
   const flowEl = $('flow');
@@ -2618,37 +2596,18 @@
     const b = e.target.closest('.arrow, .pbox');
     if (b && canHover) showPop(b);
   });
-  flowEl.addEventListener('mouseout', (e) => {
-    const b = e.target.closest('.arrow, .pbox');
-    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(350);
-  });
   flowEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.arrow, .pbox');
     if (b) showPop(b);
   });
-  flowEl.addEventListener('focusout', (e) => {
-    if (!pop.contains(e.relatedTarget)) hidePop(180);
-  });
-  pop.addEventListener('mouseenter', () => clearTimeout(popTimer));
-  pop.addEventListener('mouseleave', () => hidePop(180));
+  // The panel stays open until closed, so the user can read it while hovering other arrows.
   pop.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) { hidePop(); return; }
     const b = e.target.closest('[data-open]');
     if (b) { hidePop(); goToEntry(+b.dataset.open); }
   });
-  // Follow the arrow while the page scrolls; close once it leaves the screen.
-  function followAnchor() {
-    if (pop.hidden || !popAnchor) return;
-    const r = popAnchor.getBoundingClientRect();
-    if (!popAnchor.isConnected || r.bottom < 0 || r.top > window.innerHeight) hidePop();
-    else placePop(popAnchor);
-  }
-  $('logView').addEventListener('scroll', followAnchor);
-  window.addEventListener('scroll', followAnchor);
-  window.addEventListener('resize', followAnchor);
+  window.addEventListener('resize', () => { if (!pop.hidden && popAnchor) placePop(popAnchor); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) hidePop(); });
-  document.addEventListener('click', (e) => {
-    if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.arrow, .pbox, .tl-bar')) hidePop();
-  });
 
   // ---------- back to flow ----------
 
@@ -3001,7 +2960,7 @@
       const exc = s.events.map(e => `<tr><th>${esc(e.attrs['exception.type'] || e.name)}</th><td>${esc(e.attrs['exception.message'] || '')}</td></tr>`).join('');
       pop.innerHTML =
         `<div class="pop-head"><span class="mod">${esc(CATS[s.cat])}</span><span class="time">${fmtTime(s.start)}</span>` +
-        `<span class="pop-meta">took ${fmtDur(s.end - s.start)} · starts ${fmtDur(s.start - tr.start)} into the request</span></div>` +
+        `<span class="pop-meta">took ${fmtDur(s.end - s.start)} · starts ${fmtDur(s.start - tr.start)} into the request</span>${POP_CLOSE}</div>` +
         `<div class="pop-body">` +
         `<div class="dmsg">${esc(spanLabel(s))}</div>` +
         (sql ? `<h4>SQL</h4><div class="dmsg">${esc(sql.trim())}</div>` : '') +
@@ -3024,15 +2983,10 @@
     const b = e.target.closest('.tl-bar[data-span]');
     if (b && canHover) showSpanPop(b);
   });
-  tlEl.addEventListener('mouseout', (e) => {
-    const b = e.target.closest('.tl-bar[data-span]');
-    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(350);
-  });
   tlEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
     if (b) showSpanPop(b);
   });
-  tlEl.addEventListener('focusout', (e) => { if (!pop.contains(e.relatedTarget)) hidePop(180); });
   tlEl.addEventListener('click', (e) => {
     const g = e.target.closest('[data-grp]');
     if (g) {
