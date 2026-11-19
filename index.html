@@ -636,7 +636,7 @@
   }
   @keyframes peek-in { from { opacity: 0; transform: translateY(4px); } }
   .peek .pop-body { overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
-  #logView { transition: padding .28s cubic-bezier(.2, .8, .2, 1); }
+  #logView { transition: padding .28s cubic-bezier(.2, .8, .2, 1), margin .28s cubic-bezier(.2, .8, .2, 1); }
   body.resizing #logView { transition: none; }
   /* Reduced motion keeps a cue that the panel opened: a short fade with a small shift instead of a full slide. */
   @media (prefers-reduced-motion: reduce) {
@@ -674,12 +674,13 @@
   }
   .pop-foot span { flex: 1; }
   .pop-x { margin-left: auto; padding: 0 8px; font: 16px/1.4 var(--ui); }
-  body.docked #logView { padding-right: calc(var(--dock-w) + 16px); }
+  /* Margin, not padding, so the log's scrollbar stays visible beside the panel instead of under it. */
+  body.docked #logView { margin-right: var(--dock-w); padding-right: 8px; }
   .arrow.pop-cur, .pbox.pop-cur, .tl-bar.pop-cur { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
   @media (max-width: 860px) {
     .pop { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 45vh; border-left: 0; border-top: 1px solid var(--border); --dock-off: translateY(100%); }
     .dock-grip { display: none; }
-    body.docked #logView { padding-right: 16px; padding-bottom: calc(45vh + 16px); }
+    body.docked #logView { margin-right: 0; padding-right: 16px; padding-bottom: calc(45vh + 16px); }
   }
 
   /* ---------- sharing ---------- */
