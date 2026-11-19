@@ -7,23 +7,27 @@
 <meta name="description" content="Formats JSON, including JSON embedded inside string values such as log messages. Runs entirely in the browser.">
 <style>
   :root {
-    --bg: #f6f6f3;
+    --bg: #f7fbfd;
     --panel: #ffffff;
-    --border: #dcdcd5;
-    --text: #1d1d1b;
-    --muted: #6b6b65;
-    --accent: #163a4d;
-    --accent-soft: rgba(22, 58, 77, .28);
+    --border: #d7eaf4;
+    --text: #163a4d;
+    --heading: #003d4e;
+    --muted: #5f7884;
+    --accent: #003d4e;
+    --accent-soft: rgba(0, 61, 78, .25);
     --brand: #f7ea03;
-    --on-brand: #163a4d;
+    --on-brand: #003d4e;
+    --strong: #003d4e;
+    --on-strong: #ffffff;
+    --header-bg: #ffffff;
     --key: #8a2c8f;
     --str: #1b7337;
     --num: #b35400;
     --bool: #2457c5;
-    --null: #85857f;
+    --null: #7f939c;
     --err: #b3261e;
-    --badge-bg: #fbf5b4;
-    --btn-hover: #f1efdc;
+    --badge-bg: #e7f4fc;
+    --btn-hover: #e7f4fc;
     --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
     --indent: 2ch;
     --code-size: 13px;
@@ -32,41 +36,49 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #0d2230;
-      --panel: #123040;
-      --border: #26495b;
-      --text: #e8eef0;
-      --muted: #9db3bd;
+      --bg: #002b37;
+      --panel: #003d4e;
+      --border: #1c5a6b;
+      --text: #eaf4f8;
+      --heading: #ffffff;
+      --muted: #9fc0cb;
       --accent: #f7ea03;
       --accent-soft: rgba(247, 234, 3, .3);
+      --strong: #eaf4f8;
+      --on-strong: #003d4e;
+      --header-bg: #003d4e;
       --key: #dba1e6;
       --str: #8fd19e;
       --num: #f2b36b;
       --bool: #7ea4ff;
-      --null: #8e8e88;
+      --null: #8fa9b2;
       --err: #ff8a80;
-      --badge-bg: #2f4128;
-      --btn-hover: #1b3e50;
+      --badge-bg: #0d5063;
+      --btn-hover: #0d5063;
       --t0: #7ea4ff; --t1: #fb923c; --t2: #4ade80; --t3: #c084fc; --t4: #fb7185; --t5: #22d3ee; --t6: #facc15; --t7: #a5b4fc;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #0d2230;
-    --panel: #123040;
-    --border: #26495b;
-    --text: #e8eef0;
-    --muted: #9db3bd;
+    --bg: #002b37;
+    --panel: #003d4e;
+    --border: #1c5a6b;
+    --text: #eaf4f8;
+    --heading: #ffffff;
+    --muted: #9fc0cb;
     --accent: #f7ea03;
     --accent-soft: rgba(247, 234, 3, .3);
+    --strong: #eaf4f8;
+    --on-strong: #003d4e;
+    --header-bg: #003d4e;
     --key: #dba1e6;
     --str: #8fd19e;
     --num: #f2b36b;
     --bool: #7ea4ff;
-    --null: #8e8e88;
+    --null: #8fa9b2;
     --err: #ff8a80;
-    --badge-bg: #2f4128;
-    --btn-hover: #1b3e50;
+    --badge-bg: #0d5063;
+    --btn-hover: #0d5063;
     --t0: #7ea4ff; --t1: #fb923c; --t2: #4ade80; --t3: #c084fc; --t4: #fb7185; --t5: #22d3ee; --t6: #facc15; --t7: #a5b4fc;
     color-scheme: dark;
   }
@@ -85,10 +97,12 @@
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 14px 16px 0;
+    padding: 12px 16px;
+    background: var(--header-bg);
     border-top: 4px solid var(--brand);
+    border-bottom: 1px solid var(--border);
   }
-  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; color: var(--heading); }
   header p { margin: 0; color: var(--muted); font-size: 13px; flex: 1; }
   .tools { display: flex; align-items: center; gap: 10px; }
   .font-ctl { display: inline-flex; align-items: center; gap: 4px; }
@@ -160,7 +174,7 @@
     border-bottom: 1px solid var(--border);
     font-size: 13px;
   }
-  .bar .label { font-weight: 600; margin-right: auto; }
+  .bar .label { font-weight: 600; margin-right: auto; color: var(--heading); }
 
   button, select {
     font: inherit;
@@ -175,8 +189,9 @@
   select { padding: 3px 4px; background: var(--panel); }
   button:hover { background: var(--btn-hover); }
   button.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 600; }
-  button.primary:hover { background: #e6da00; }
-  #copyPayload { border: 2px solid var(--str); color: var(--str); font-weight: 600; padding: 2px 8px; }
+  button.primary:hover { background: #e6da00; border-color: #e6da00; }
+  #copyPayload { background: var(--strong); border-color: var(--strong); color: var(--on-strong); font-weight: 600; }
+  #copyPayload:hover { opacity: .88; }
   label.check { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
 
   textarea {
