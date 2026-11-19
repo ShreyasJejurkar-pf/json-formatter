@@ -594,8 +594,9 @@
     z-index: 50;
     display: flex;
     flex-direction: column;
+    /* placePop sets width and max-height from the space beside the cursor. */
     width: min(620px, calc(100vw - 16px));
-    max-height: min(62vh, 560px);
+    max-height: calc(100vh - 16px);
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -2559,17 +2560,53 @@
     placePop(btn);
   }
 
-  // Below the arrow when it fits, otherwise above; clamped to the viewport.
+  // Last pointer position, so the popover opens at the cursor and follows it along the arrow.
+  let pointer = null;
+  document.addEventListener('mousemove', (e) => { pointer = { x: e.clientX, y: e.clientY }; }, { passive: true });
+
+  const POP_GAP = 18, POP_EDGE = 8, POP_MIN_W = 360, POP_MAX_W = 760;
+
+  // Beside the cursor on the roomier side, sized to that space, so the row under the cursor stays visible.
+  // On narrow screens, above or below the cursor instead.
   function placePop(btn) {
-    const r = btn.getBoundingClientRect();
     const vw = document.documentElement.clientWidth, vh = window.innerHeight;
-    const w = pop.offsetWidth, h = pop.offsetHeight;
-    const left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8);
-    const below = r.bottom + 6;
-    const top = below + h <= vh - 8 || r.top < vh / 2 ? Math.min(below, vh - h - 8) : Math.max(8, r.top - h - 6);
+    const r = btn.getBoundingClientRect();
+    const onBtn = pointer && pointer.x >= r.left - 2 && pointer.x <= r.right + 2 && pointer.y >= r.top - 2 && pointer.y <= r.bottom + 2;
+    const x = onBtn ? pointer.x : r.left + r.width / 2;
+    const y = onBtn ? pointer.y : r.top + r.height / 2;
+    const roomRight = vw - x - POP_GAP - POP_EDGE, roomLeft = x - POP_GAP - POP_EDGE;
+    const side = Math.max(roomRight, roomLeft);
+    let left, top;
+    if (side >= POP_MIN_W) {
+      const w = Math.min(POP_MAX_W, side);
+      pop.style.width = w + 'px';
+      pop.style.maxHeight = (vh - 2 * POP_EDGE) + 'px';
+      const h = pop.offsetHeight;
+      left = roomRight >= roomLeft ? x + POP_GAP : x - POP_GAP - w;
+      // A third above the cursor, so the eye lands near the top of the payload.
+      top = Math.min(Math.max(POP_EDGE, y - h / 3), vh - h - POP_EDGE);
+    } else {
+      const w = Math.min(POP_MAX_W, vw - 2 * POP_EDGE);
+      const roomBelow = vh - Math.max(y, r.bottom) - POP_GAP - POP_EDGE, roomAbove = Math.min(y, r.top) - POP_GAP - POP_EDGE;
+      const below = roomBelow >= roomAbove;
+      pop.style.width = w + 'px';
+      pop.style.maxHeight = Math.max(160, below ? roomBelow : roomAbove) + 'px';
+      const h = pop.offsetHeight;
+      left = Math.min(Math.max(POP_EDGE, x - w / 2), vw - w - POP_EDGE);
+      top = below ? Math.max(y, r.bottom) + POP_GAP : Math.min(y, r.top) - POP_GAP - h;
+    }
     pop.style.left = left + 'px';
-    pop.style.top = Math.max(8, top) + 'px';
+    pop.style.top = Math.max(POP_EDGE, top) + 'px';
   }
+
+  // Follow the cursor while it moves along the hovered arrow or bar; stop once it leaves, so it can reach the popover.
+  let popFrame = 0;
+  document.addEventListener('mousemove', (e) => {
+    if (pop.hidden || !popAnchor || popFrame || pop.contains(e.target)) return;
+    const r = popAnchor.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    popFrame = requestAnimationFrame(() => { popFrame = 0; if (!pop.hidden && popAnchor) placePop(popAnchor); });
+  }, { passive: true });
 
   function hidePop(delay = 0) {
     clearTimeout(popTimer);
@@ -2583,7 +2620,7 @@
   });
   flowEl.addEventListener('mouseout', (e) => {
     const b = e.target.closest('.arrow, .pbox');
-    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(180);
+    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(350);
   });
   flowEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.arrow, .pbox');
@@ -2989,7 +3026,7 @@
   });
   tlEl.addEventListener('mouseout', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
-    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(180);
+    if (b && !b.contains(e.relatedTarget) && !pop.contains(e.relatedTarget)) hidePop(350);
   });
   tlEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
