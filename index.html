@@ -1113,7 +1113,7 @@
         <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
         <li>A red <b>&#9888; Exception</b> box marks an exception and an amber <b>&#9888; Error</b> box marks a logged error. A red arrow is a failed response, such as <code>Unauthorized</code> or a 4xx or 5xx status. Hover over a box to see the stack trace.</li>
         <li>Some integrations log their provider calls without a LogType. For those, arrows come from messages like "SubmitPayout request: {...}" and are marked <i>inferred</i>.</li>
-        <li>Hover over an arrow for a preview of its payload. Click the arrow, or <b>View details</b>, to open the full payload in a panel on the right. Drag the panel's left edge to resize it; close it with &times; or Esc. <b>Open entry</b> shows the entry in the list, and <b>&larr; Back to flow</b> returns to the same spot.</li>
+        <li>Hover over an arrow for a preview of its payload. Click the arrow, or <b>View details</b>, to open the full payload in a panel on the right. While the panel is open, hovering another arrow shows it there directly. Drag the panel's left edge to resize it; close it with &times; or Esc. <b>Open entry</b> shows the entry in the list, and <b>&larr; Back to flow</b> returns to the same spot.</li>
         <li>Click a trace in the summary to see one request's flow on its own.</li>
       </ol>
       <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Other entries count as internal steps unless they are exceptions or errors.</p>
@@ -2645,6 +2645,12 @@
     peek.style.top = (r.bottom + 8 + h <= vh - 8 ? r.bottom + 8 : Math.max(8, r.top - 8 - h)) + 'px';
   }
 
+  // Once the panel is open, hovering fills it directly; the preview card is only for when it's closed.
+  function hoverShow(parts, btn) {
+    if (!pop.hidden && !pop.classList.contains('closing')) showPanel(parts, btn);
+    else showPeek(parts, btn);
+  }
+
   function hidePeek(delay = 0) {
     clearTimeout(peekTimer);
     peekTimer = setTimeout(() => { peek.hidden = true; peekAnchor = null; peekParts = null; }, delay);
@@ -2722,7 +2728,7 @@
   // Hover gives a quick preview; a click opens the side panel.
   flowEl.addEventListener('mouseover', (e) => {
     const b = e.target.closest('.arrow, .pbox');
-    if (b && canHover) showPeek(entryParts(b), b);
+    if (b && canHover) hoverShow(entryParts(b), b);
   });
   flowEl.addEventListener('mouseout', (e) => {
     const b = e.target.closest('.arrow, .pbox');
@@ -2730,7 +2736,7 @@
   });
   flowEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.arrow, .pbox');
-    if (b) showPeek(entryParts(b), b);
+    if (b) hoverShow(entryParts(b), b);
   });
   flowEl.addEventListener('focusout', () => hidePeek(200));
   // The panel stays open until closed, so the user can read it while hovering other arrows.
@@ -3115,7 +3121,7 @@
   const tlEl = $('timeline');
   tlEl.addEventListener('mouseover', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
-    if (b && canHover) showPeek(spanParts(b), b);
+    if (b && canHover) hoverShow(spanParts(b), b);
   });
   tlEl.addEventListener('mouseout', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
@@ -3123,7 +3129,7 @@
   });
   tlEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
-    if (b) showPeek(spanParts(b), b);
+    if (b) hoverShow(spanParts(b), b);
   });
   tlEl.addEventListener('focusout', () => hidePeek(200));
   tlEl.addEventListener('click', (e) => {
