@@ -840,6 +840,7 @@
       <button id="collapse">Collapse</button>
       <button id="expandAll">Expand</button>
       <button id="shareFmt" title="Share this JSON as a link or a file">Share</button>
+      <button id="copyPayload" title="Copy only the request or response JSON from the log body" hidden>Copy payload</button>
       <button id="copy" class="primary">Copy</button>
     </div>
     <div id="source" class="source" hidden></div>
@@ -946,6 +947,7 @@
         <li>When the JSON is a log entry, the blue strip above the output shows its application, module, transaction ID and merchant ID.</li>
         <li>Click any <code>{</code> or <code>[</code> to fold it. <b>Collapse</b> folds everything below the top level and <b>Expand</b> opens it again.</li>
         <li><b>Copy</b> copies the output with the indent you picked.</li>
+        <li>On a log entry, <code>attributes</code> and <code>resources</code> start folded because they hold trace data. <b>Copy payload</b> copies only the request or response JSON from the log body.</li>
       </ol>
       <p class="g-tip">You can also drop a .json file anywhere on the page. <b>A&minus;</b> and <b>A+</b> change the text size.</p>
     </section>
@@ -1025,8 +1027,10 @@
   const ESCAPES = { '"': '"', '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
   const NUMBER = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?/y;
 
-  function parseAt(s, start) {
+  // `lenient` accepts a bare word as a value, such as [REDACTED] written by a log masker.
+  function parseAt(s, start, lenient) {
     let i = start;
+    let words = 0;
     const fail = (msg) => { throw new ParseError(msg, i); };
     const ws = () => {
       while (i < s.length) {
@@ -1046,6 +1050,11 @@
       if (s.startsWith('true', i)) { i += 4; return { t: 'bool', raw: 'true' }; }
       if (s.startsWith('false', i)) { i += 5; return { t: 'bool', raw: 'false' }; }
       if (s.startsWith('null', i)) { i += 4; return { t: 'null' }; }
+      if (lenient) {
+        WORD.lastIndex = i;
+        const m = WORD.exec(s);
+        if (m) { i += m[0].length; words++; return { t: 'word', raw: m[0] }; }
+      }
       fail(c === undefined ? 'Unexpected end of input' : `Unexpected character ${JSON.stringify(c)}`);
     }
 
@@ -1117,8 +1126,10 @@
     }
 
     const node = value(0);
-    return { node, end: i };
+    return { node, end: i, words };
   }
+
+  const WORD = /[A-Za-z_][\w.-]*/y;
 
   function parseDocument(s) {
     const { node, end } = parseAt(s, 0);
@@ -1137,7 +1148,9 @@
       const c = text[i];
       if (c !== '{' && c !== '[' && !(quoted && c === '"')) continue;
       try {
-        const { node, end } = parseAt(text, i);
+        const { node, end, words } = parseAt(text, i, true);
+        // Without this, log prefixes like [INF] would parse as arrays.
+        if (words && node.t !== 'obj') continue;
         // Step past only the opening quote: a stray quote must not swallow a following object.
         if (node.t === 'str' && !embedded(node, 1)) continue;
         if (i > last) segs.push({ text: text.slice(last, i) });
@@ -1191,6 +1204,7 @@
       }
       case 'num': return `<span class="n">${node.raw}</span>`;
       case 'bool': return `<span class="b">${node.raw}</span>`;
+      case 'word': return `<span class="z" title="Unquoted in the source, so not valid JSON">${esc(node.raw)}</span>`;
       case 'null': return '<span class="z">null</span>';
     }
     const isObj = node.t === 'obj';
@@ -1225,7 +1239,7 @@
           .map(x => x.node ? renderText(x.node, ctx, level, embDepth + 1) : JSON.stringify(x.text))
           .join(' + ');
       }
-      case 'num': case 'bool': return node.raw;
+      case 'num': case 'bool': case 'word': return node.raw;
       case 'null': return 'null';
     }
     const isObj = node.t === 'obj';
@@ -1307,6 +1321,7 @@
     const ctx = { expand: expandBox.checked, nested: 0 };
     document.documentElement.style.setProperty('--indent', indentSel.value === 'tab' ? '4ch' : indentSel.value + 'ch');
     renderSource(null);
+    $('copyPayload').hidden = true;
 
     if (!session.set('input', text)) session.del('input');
     if (!text.trim()) { result = null; out.innerHTML = ''; setStatus(''); return; }
@@ -1318,6 +1333,7 @@
       result = { root };
       renderSource(root);
       out.innerHTML = `<div class="ln">${renderHtml(root, ctx, 0, false)}</div>`;
+      afterRender();
       setStatus(ctx.nested
         ? `Valid JSON. Expanded ${ctx.nested} string${ctx.nested === 1 ? '' : 's'} that held JSON.`
         : 'Valid JSON.', 'ok');
@@ -1343,6 +1359,7 @@
       out.innerHTML = segs.map(x => x.node
         ? `<div class="ln">${renderHtml(x.node, ctx, 0, false)}</div>`
         : (x.text.trim() ? `<div class="raw">${esc(x.text.trim())}</div>` : '')).join('');
+      afterRender();
       setStatus(`Not a single JSON document. Found ${blocks} JSON block${blocks === 1 ? '' : 's'} in the text.` +
         (ctx.nested ? ` Expanded ${ctx.nested} nested string${ctx.nested === 1 ? '' : 's'}.` : ''));
       return;
@@ -1365,6 +1382,44 @@
       .filter(Boolean)
       .join('\n\n');
   }
+
+  // Log trace metadata, not business data, so it starts folded.
+  const TRACE_KEYS = new Set(['attributes', 'resources']);
+  const PAYLOAD_KEYS = ['body', 'message', 'msg', 'log', 'line'];
+
+  function afterRender() {
+    // Only keys of each top-level object: nested business data may use the same names.
+    out.querySelectorAll(':scope > .ln > .fold > .kids > .ln').forEach(ln => {
+      const k = ln.querySelector(':scope > .k');
+      const fold = ln.querySelector(':scope > .fold');
+      if (!k || !fold || !TRACE_KEYS.has(JSON.parse(k.textContent).toLowerCase())) return;
+      fold.classList.add('collapsed');
+      fold.querySelector(':scope > .tg').setAttribute('aria-expanded', 'false');
+    });
+    $('copyPayload').hidden = !payloadNodes().length;
+  }
+
+  // The request or response JSON inside the log body, e.g. "SubmitPayout request: {...}".
+  function payloadNodes() {
+    if (!result) return [];
+    const roots = result.root ? [result.root] : result.segs.filter(x => x.node).map(x => x.node);
+    const found = [];
+    for (const root of roots) {
+      if (root.t !== 'obj') continue;
+      const entry = root.entries.find(([k]) => PAYLOAD_KEYS.includes(k.toLowerCase()));
+      if (!entry) continue;
+      const v = entry[1];
+      if (v.t === 'obj' || v.t === 'arr') found.push(v);
+      else if (v.t === 'str') (embedded(v, 0) || []).forEach(x => { if (x.node) found.push(x.node); });
+    }
+    return found;
+  }
+
+  $('copyPayload').addEventListener('click', (e) => {
+    const ctx = { expand: expandBox.checked, unit: indentUnit() };
+    const text = payloadNodes().map(n => renderText(n, ctx, 0, 1)).join('\n\n');
+    if (text) copyText(text, e.currentTarget);
+  });
 
   let timer = 0;
   input.addEventListener('input', () => {
@@ -1582,7 +1637,7 @@
   function valText(node) {
     switch (node.t) {
       case 'str': return node.v;
-      case 'num': case 'bool': return node.raw;
+      case 'num': case 'bool': case 'word': return node.raw;
       case 'null': return 'null';
       default: return renderText(node, { expand: false, unit: '' }, 0, 0).replace(/\n/g, '');
     }
