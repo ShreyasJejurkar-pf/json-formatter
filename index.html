@@ -12,16 +12,18 @@
     --border: #dcdcd5;
     --text: #1d1d1b;
     --muted: #6b6b65;
-    --accent: #2457c5;
-    --accent-soft: rgba(36, 87, 197, .28);
+    --accent: #163a4d;
+    --accent-soft: rgba(22, 58, 77, .28);
+    --brand: #f7ea03;
+    --on-brand: #163a4d;
     --key: #8a2c8f;
     --str: #1b7337;
     --num: #b35400;
     --bool: #2457c5;
     --null: #85857f;
     --err: #b3261e;
-    --badge-bg: #e6edfc;
-    --btn-hover: #efefea;
+    --badge-bg: #fbf5b4;
+    --btn-hover: #f1efdc;
     --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, Menlo, monospace;
     --indent: 2ch;
     --code-size: 13px;
@@ -30,41 +32,41 @@
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #141513;
-      --panel: #1c1d1b;
-      --border: #33352f;
-      --text: #e6e6e0;
-      --muted: #9b9b94;
-      --accent: #7ea4ff;
-      --accent-soft: rgba(126, 164, 255, .3);
+      --bg: #0d2230;
+      --panel: #123040;
+      --border: #26495b;
+      --text: #e8eef0;
+      --muted: #9db3bd;
+      --accent: #f7ea03;
+      --accent-soft: rgba(247, 234, 3, .3);
       --key: #dba1e6;
       --str: #8fd19e;
       --num: #f2b36b;
       --bool: #7ea4ff;
       --null: #8e8e88;
       --err: #ff8a80;
-      --badge-bg: #26324d;
-      --btn-hover: #282a26;
+      --badge-bg: #2f4128;
+      --btn-hover: #1b3e50;
       --t0: #7ea4ff; --t1: #fb923c; --t2: #4ade80; --t3: #c084fc; --t4: #fb7185; --t5: #22d3ee; --t6: #facc15; --t7: #a5b4fc;
       color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
-    --bg: #141513;
-    --panel: #1c1d1b;
-    --border: #33352f;
-    --text: #e6e6e0;
-    --muted: #9b9b94;
-    --accent: #7ea4ff;
-    --accent-soft: rgba(126, 164, 255, .3);
+    --bg: #0d2230;
+    --panel: #123040;
+    --border: #26495b;
+    --text: #e8eef0;
+    --muted: #9db3bd;
+    --accent: #f7ea03;
+    --accent-soft: rgba(247, 234, 3, .3);
     --key: #dba1e6;
     --str: #8fd19e;
     --num: #f2b36b;
     --bool: #7ea4ff;
     --null: #8e8e88;
     --err: #ff8a80;
-    --badge-bg: #26324d;
-    --btn-hover: #282a26;
+    --badge-bg: #2f4128;
+    --btn-hover: #1b3e50;
     --t0: #7ea4ff; --t1: #fb923c; --t2: #4ade80; --t3: #c084fc; --t4: #fb7185; --t5: #22d3ee; --t6: #facc15; --t7: #a5b4fc;
     color-scheme: dark;
   }
@@ -84,6 +86,7 @@
     align-items: center;
     gap: 16px;
     padding: 14px 16px 0;
+    border-top: 4px solid var(--brand);
   }
   header h1 { font-size: 17px; margin: 0; font-weight: 650; }
   header p { margin: 0; color: var(--muted); font-size: 13px; flex: 1; }
@@ -119,16 +122,26 @@
 
   .tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; padding: 2px; gap: 2px; }
   .tabs button { border: 0; padding: 3px 11px; border-radius: 5px; }
-  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--panel); }
+  .tabs button[aria-selected="true"] { background: var(--brand); color: var(--on-brand); font-weight: 600; }
 
   #fmtView {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
-    gap: 12px;
+    grid-template-columns: minmax(0, var(--left, 1fr)) 12px minmax(0, var(--right, 1.25fr));
     padding: 12px 16px 16px;
   }
+  .split { cursor: col-resize; position: relative; touch-action: none; }
+  .split::after {
+    content: "";
+    position: absolute;
+    inset: 0 5px;
+    border-radius: 2px;
+    background: var(--border);
+    transition: background .15s;
+  }
+  .split:hover::after, .split:focus-visible::after, .split.dragging::after { background: var(--brand); }
+  body.resizing { cursor: col-resize; user-select: none; }
   .pane {
     display: flex;
     flex-direction: column;
@@ -161,7 +174,9 @@
   }
   select { padding: 3px 4px; background: var(--panel); }
   button:hover { background: var(--btn-hover); }
-  button.primary { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); font-weight: 600; }
+  button.primary:hover { background: #e6da00; }
+  #copyPayload { border: 2px solid var(--str); color: var(--str); font-weight: 600; padding: 2px 8px; }
   label.check { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none; }
 
   textarea {
@@ -779,7 +794,8 @@
     html, body { height: auto; }
     header { flex-wrap: wrap; gap: 4px 16px; }
     header p { flex-basis: 100%; order: 3; }
-    #fmtView { grid-template-columns: minmax(0, 1fr); }
+    #fmtView { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .split { display: none; }
     .pane { height: 70vh; }
     .pane:first-child { height: 40vh; }
     #logView { overflow: visible; }
@@ -827,6 +843,8 @@
     <textarea id="in" spellcheck="false" autocomplete="off"
       placeholder="Paste JSON, a JSON log line, or any text that contains JSON"></textarea>
   </section>
+
+  <div id="split" class="split" role="separator" aria-orientation="vertical" aria-label="Resize input and output" tabindex="0" title="Drag to resize. Double-click to reset."></div>
 
   <section class="pane">
     <div class="bar">
@@ -947,6 +965,7 @@
         <li>When the JSON is a log entry, the blue strip above the output shows its application, module, transaction ID and merchant ID.</li>
         <li>Click any <code>{</code> or <code>[</code> to fold it. <b>Collapse</b> folds everything below the top level and <b>Expand</b> opens it again.</li>
         <li><b>Copy</b> copies the output with the indent you picked.</li>
+        <li>Drag the bar between Input and Output to resize them. Double-click it to reset.</li>
         <li>On a log entry, <code>attributes</code> and <code>resources</code> start folded because they hold trace data. <b>Copy payload</b> copies only the request or response JSON from the log body.</li>
       </ol>
       <p class="g-tip">You can also drop a .json file anywhere on the page. <b>A&minus;</b> and <b>A+</b> change the text size.</p>
@@ -1573,6 +1592,49 @@
     document.documentElement.setAttribute('data-theme', t);
     themeBtn.setAttribute('aria-checked', String(t === 'dark'));
   }
+  // ---------- input/output splitter ----------
+
+  const split = $('split');
+  function setSplit(p, save) {
+    p = Math.min(0.85, Math.max(0.15, p));
+    const s = $('fmtView').style;
+    s.setProperty('--left', p + 'fr');
+    s.setProperty('--right', (1 - p) + 'fr');
+    split.setAttribute('aria-valuenow', String(Math.round(p * 100)));
+    if (save) store.set('split', String(p));
+  }
+  function splitRatio(clientX) {
+    const a = split.previousElementSibling.getBoundingClientRect();
+    const b = split.nextElementSibling.getBoundingClientRect();
+    return (clientX - a.left) / (b.right - a.left);
+  }
+  const savedSplit = parseFloat(store.get('split'));
+  if (savedSplit) setSplit(savedSplit, false);
+  split.addEventListener('pointerdown', (e) => {
+    split.setPointerCapture(e.pointerId);
+    split.classList.add('dragging');
+    document.body.classList.add('resizing');
+  });
+  split.addEventListener('pointermove', (e) => {
+    if (split.hasPointerCapture(e.pointerId)) setSplit(splitRatio(e.clientX), false);
+  });
+  split.addEventListener('pointerup', (e) => {
+    split.classList.remove('dragging');
+    document.body.classList.remove('resizing');
+    setSplit(splitRatio(e.clientX), true);
+  });
+  split.addEventListener('dblclick', () => {
+    $('fmtView').style.removeProperty('--left');
+    $('fmtView').style.removeProperty('--right');
+    store.set('split', '');
+  });
+  split.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault();
+    const r = split.getBoundingClientRect();
+    setSplit(splitRatio(r.left + r.width / 2) + (e.key === 'ArrowLeft' ? -0.02 : 0.02), true);
+  });
+
   const savedTheme = store.get('theme');
   applyTheme(savedTheme === 'light' || savedTheme === 'dark' ? savedTheme : (systemDark.matches ? 'dark' : 'light'));
   systemDark.addEventListener('change', (e) => {
