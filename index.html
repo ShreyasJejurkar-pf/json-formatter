@@ -199,9 +199,8 @@
     padding: 4px 12px;
     transition: background .15s, color .15s, border-color .15s;
   }
-  button.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
-  button.primary:hover, #copyPayload, .payload-btn { background: var(--strong); border-color: var(--strong); color: var(--on-strong); }
-  #copyPayload:hover, .payload-btn:hover { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  button.primary, #copyPayload, .payload-btn { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+  button.primary:hover, #copyPayload:hover, .payload-btn:hover { background: var(--strong); border-color: var(--strong); color: var(--on-strong); }
   .find { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
   .find input {
     flex: 1;
@@ -738,8 +737,26 @@
     padding: 12px 14px;
     margin-bottom: 10px;
   }
-  .summary h2 { font-size: 15px; margin: 0 0 2px; overflow-wrap: anywhere; }
-  .summary .meta { color: var(--muted); margin-bottom: 8px; }
+  .summary h2 { font-size: 15px; margin: 0; overflow-wrap: anywhere; color: var(--heading); }
+  .summary .meta { color: var(--muted); }
+  .sum-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 12px;
+    width: 100%;
+    border: 0;
+    padding: 0;
+    background: none;
+    text-align: left;
+  }
+  .sum-head:hover { background: none; }
+  .sum-toggle { margin-left: auto; color: var(--accent); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .sum-toggle::after { content: "Hide details \25B4"; }
+  .summary.shut .sum-toggle::after { content: "Show details \25BE"; }
+  .sum-body { margin-top: 8px; }
+  .summary.shut .sum-body { display: none; }
+  .summary.shut { padding: 8px 14px; }
   .facet { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; margin: 5px 0; }
   .facet > .fl { color: var(--muted); font-size: 12.5px; min-width: 76px; }
   .chip {
@@ -942,8 +959,8 @@
     <section id="summary" class="summary"></section>
     <div class="bar logbar">
       <div class="tabs" id="mode" role="tablist" aria-label="Display">
-        <button role="tab" data-mode="list" aria-selected="true">List</button>
-        <button role="tab" data-mode="flow" aria-selected="false">Flow</button>
+        <button role="tab" data-mode="flow" aria-selected="true">Flow</button>
+        <button role="tab" data-mode="list" aria-selected="false">List</button>
         <button role="tab" data-mode="timeline" aria-selected="false" hidden>Timeline</button>
       </div>
       <input type="search" id="q" placeholder="Search messages and fields" aria-label="Search">
@@ -1028,7 +1045,7 @@
       <ol>
         <li>In Grafana, open the logs panel menu and choose <b>Inspect</b>, then <b>Data</b>, then <b>Download CSV</b>.</li>
         <li>Open the <b>Log viewer</b> tab and choose that file, or drop it anywhere on the page. JSON arrays and newline-delimited JSON work too.</li>
-        <li>The summary shows where the logs came from and lists every module, trace, ID and log type. Click one to filter the list, and click it again to remove the filter.</li>
+        <li>The log opens in <b>Flow</b>. Switch to <b>List</b> to read every line. The summary starts folded; click <b>Show details</b> to see where the logs came from and every module, trace, ID and log type. Click one to filter, and click it again to remove the filter.</li>
         <li>Rows are in time order. The <span class="delta slow">+664 ms</span> next to each time is the gap since the previous row. Orange means 250 ms or more and red means 1 s or more.</li>
         <li>Click a row to see its message and fields. Press <kbd>j</kbd> and <kbd>k</kbd>, or use <b>Next</b> and <b>Prev</b>, to read the entries one at a time.</li>
         <li>Exceptions and errors get a red or amber badge, even when they were logged at Information level. Click <b>Exceptions</b> or <b>Errors</b> under Problems in the summary to list only those.</li>
@@ -1039,7 +1056,7 @@
 
     <section class="g-page" data-page="flow" hidden>
       <ol>
-        <li>In the log viewer, switch the toolbar from <b>List</b> to <b>Flow</b> to see the calls between Merchant, PayFuture and Provider.</li>
+        <li>The log viewer opens in <b>Flow</b>, which shows the calls between Merchant, PayFuture and Provider.</li>
         <li>Solid blue arrows are requests. Dashed green arrows are responses, labelled with the time since their request and the status code. Orange arrows are provider webhooks and merchant callbacks.</li>
         <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
         <li>A red <b>&#9888; Exception</b> box marks an exception and an amber <b>&#9888; Error</b> box marks a logged error. A red arrow is a failed response, such as <code>Unauthorized</code> or a 4xx or 5xx status. Hover over a box to see the stack trace.</li>
@@ -2044,7 +2061,9 @@
       session.del('logState');
       session.del('traceData');
       setTraces(null);
-      if (LOG.mode === 'timeline') setMode('list');
+      if (LOG.mode === 'timeline') setMode('flow');
+      // A new file starts with the summary folded so the log lines come first.
+      $('summary').classList.add('shut');
       LOG.kept = session.set('logText', text) && session.set('logName', name);
       if (!LOG.kept) { session.del('logText'); session.del('logName'); }
     }
@@ -2076,7 +2095,7 @@
     session.del('traceData');
     Object.assign(LOG, { name: '', entries: [], open: new Set(), curK: null, view: [], kept: false });
     setTraces(null);
-    if (LOG.mode === 'timeline') setMode('list');
+    if (LOG.mode === 'timeline') setMode('flow');
     $('list').innerHTML = '';
     $('logUi').hidden = true;
     $('dropErr').hidden = true;
@@ -2202,7 +2221,9 @@
     const mods = counts('module');
     const common = [...LOG.consts.values()];
     $('summary').innerHTML =
-      `<h2>${esc(LOG.name)}</h2><div class="meta">${meta}</div>` +
+      `<button class="sum-head" aria-expanded="${!$('summary').classList.contains('shut')}" title="Show or hide the file summary">` +
+      `<h2>${esc(LOG.name)}</h2><span class="meta">${meta}</span><span class="sum-toggle"></span></button>` +
+      '<div class="sum-body">' +
       (srcHtml ? `<div class="source srcbox">${srcHtml}</div>` : '') +
       (mods.length <= 40 ? facet('Modules', mods.map(([v, n]) => chip('mod', v, v, n))) : '') +
       facet('Problems', [['exception', 'Exceptions'], ['error', 'Errors']]
@@ -2216,8 +2237,16 @@
       (common.length
         ? `<details class="common"><summary>${common.length} field${common.length === 1 ? ' has' : 's have'} the same value in every entry</summary>` +
           fieldsTable(common, { expand: expandBox.checked, nested: 0 }) + '</details>'
-        : '');
+        : '') +
+      '</div>';
   }
+
+  $('summary').addEventListener('click', (ev) => {
+    const head = ev.target.closest('.sum-head');
+    if (!head) return;
+    const shut = $('summary').classList.toggle('shut');
+    head.setAttribute('aria-expanded', String(!shut));
+  });
 
   function fillSelects() {
     const opts = (all, list, label = (v) => v) => `<option value="">${all}</option>` +
@@ -2594,11 +2623,11 @@
     if (ret) scroller().scrollTop = ret.scroll;
   });
 
-  function setMode(mode) {
+  function setMode(mode, remember) {
     LOG.mode = mode === 'flow' ? 'flow' : mode === 'timeline' && LOG.traces ? 'timeline' : 'list';
     if (LOG.mode !== 'list') { LOG.flowReturn = null; $('backFlow').hidden = true; }
     hidePop();
-    store.set('opt.logMode', LOG.mode);
+    if (remember) store.set('opt.logView', LOG.mode);
     document.body.classList.toggle('flow-mode', LOG.mode !== 'list');
     $('list').hidden = LOG.mode !== 'list';
     $('flow').hidden = LOG.mode !== 'flow';
@@ -2628,7 +2657,7 @@
 
   $('mode').addEventListener('click', (e) => {
     const b = e.target.closest('[data-mode]');
-    if (b) setMode(b.dataset.mode);
+    if (b) setMode(b.dataset.mode, true);
   });
   // Touch screens have no hover, so the first tap shows the popover and its button opens the entry.
   $('flow').addEventListener('click', (e) => {
@@ -2638,8 +2667,9 @@
     goToEntry(+b.dataset.k);
   });
   // Read before setMode, which stores 'list' while no timeline data is loaded yet.
-  const savedMode = store.get('opt.logMode');
-  setMode(savedMode);
+  // New key so visitors who had the old default ('list') stored start on Flow.
+  const savedMode = store.get('opt.logView');
+  setMode(savedMode || 'flow');
 
   // ---------- timeline ----------
   // Spans come from Tempo through grafana.js. Times are ms since the epoch.
@@ -3426,7 +3456,7 @@
     }
     if (!loadLogs(grafanaCsv(p.logs), `${p.query} · ${p.env}`)) return;
     loadTraces(p.traces);
-    setMode(LOG.traces ? 'timeline' : 'list');
+    setMode(LOG.traces ? 'timeline' : 'flow');
     const n = p.traces.length;
     showBanner(`Loaded ${n} request${n === 1 ? '' : 's'} and ${p.logs.length} log lines for ${p.query} from Grafana ${p.env}. ` +
       (p.notes || []).join(' '));
