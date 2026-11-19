@@ -556,14 +556,14 @@
   .tl-dur.gap { color: var(--err); font-weight: 600; }
   .tl-gap { text-align: center; color: var(--muted); font-size: 12px; padding: 8px 0; }
   .tl-gap b { color: var(--text); }
-  .pop .kv { border-collapse: collapse; width: 100%; font: 12px/1.5 var(--mono); }
-  .pop .kv th { text-align: left; vertical-align: top; color: var(--key); font-weight: normal; padding: 1px 12px 1px 0; white-space: nowrap; width: 1%; }
-  .pop .kv td { overflow-wrap: anywhere; white-space: pre-wrap; padding: 1px 0; }
-  .pop h4 { margin: 10px 0 4px; font: 600 11px/1.6 var(--ui); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-  .pop .plog { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 4px; padding: 1px 4px; font: 12px/1.5 var(--mono); background: none; }
-  .pop .plog:hover { background: var(--btn-hover); }
-  .pop .plog .msg { white-space: nowrap; }
-  .pop .plog.prob-exception .msg, .pop .plog.prob-error .msg { color: var(--err); }
+  .pop .kv, .peek .kv { border-collapse: collapse; width: 100%; font: 12px/1.5 var(--mono); }
+  .pop .kv th, .peek .kv th { text-align: left; vertical-align: top; color: var(--key); font-weight: normal; padding: 1px 12px 1px 0; white-space: nowrap; width: 1%; }
+  .pop .kv td, .peek .kv td { overflow-wrap: anywhere; white-space: pre-wrap; padding: 1px 0; }
+  .pop h4, .peek h4 { margin: 10px 0 4px; font: 600 11px/1.6 var(--ui); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .pop .plog, .peek .plog { display: flex; gap: 8px; width: 100%; text-align: left; border: 0; border-radius: 4px; padding: 1px 4px; font: 12px/1.5 var(--mono); background: none; }
+  .pop .plog:hover, .peek .plog:hover { background: var(--btn-hover); }
+  .pop .plog .msg, .peek .plog .msg { white-space: nowrap; }
+  .pop .plog.prob-exception .msg, .peek .plog.prob-exception .msg, .pop .plog.prob-error .msg, .peek .plog.prob-error .msg { color: var(--err); }
   @media (max-width: 640px) {
     .tl-card { padding: 8px 8px 10px; }
     .tl-grid { grid-template-columns: minmax(0, 1fr) 7ch; }
@@ -591,20 +591,59 @@
   /* ---------- flow popover ---------- */
   /* Docked beside the flow rather than floating over it; #logView gets matching padding so nothing hides under it. */
   :root { --dock-w: clamp(360px, 36vw, 640px); --dock-top: 120px; }
-  .pop {
+  .pop, .peek {
     position: fixed;
-    z-index: 50;
     display: flex;
     flex-direction: column;
-    top: var(--dock-top);
-    right: 16px;
-    bottom: 16px;
-    width: var(--dock-w);
     background: var(--panel);
+    overflow: hidden;
+  }
+  /* Flush to the right edge, one border line, no float shadow: it reads as part of the page. */
+  .pop {
+    z-index: 50;
+    top: var(--dock-top);
+    right: 0;
+    bottom: 0;
+    width: var(--dock-w);
+    border-left: 1px solid var(--border);
+    --dock-off: translateX(100%);
+    animation: dock-in .28s cubic-bezier(.2, .8, .2, 1);
+  }
+  .pop.closing { animation: dock-out .22s ease-in forwards; }
+  @keyframes dock-in { from { transform: var(--dock-off); opacity: var(--dock-fade, 1); } }
+  @keyframes dock-out { to { transform: var(--dock-off); opacity: var(--dock-fade, 1); } }
+  .pop > .pop-head { background: var(--bg); }
+  .dock-grip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    z-index: 1;
+    cursor: col-resize;
+    touch-action: none;
+  }
+  .dock-grip:hover, .dock-grip:focus-visible, body.resizing .dock-grip { background: var(--brand); outline: none; }
+  /* Small floating preview on hover. */
+  .peek {
+    z-index: 60;
+    width: min(460px, calc(100vw - 16px));
+    max-height: min(320px, calc(100vh - 16px));
     border: 1px solid var(--border);
     border-radius: 10px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, .35);
-    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 20, 30, .18);
+    animation: peek-in .14s ease-out;
+  }
+  @keyframes peek-in { from { opacity: 0; transform: translateY(4px); } }
+  .peek .pop-body { overflow: hidden; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  #logView { transition: padding .28s cubic-bezier(.2, .8, .2, 1); }
+  body.resizing #logView { transition: none; }
+  /* Reduced motion keeps a cue that the panel opened: a short fade with a small shift instead of a full slide. */
+  @media (prefers-reduced-motion: reduce) {
+    .pop { --dock-off: translateX(24px); --dock-fade: 0; animation-duration: .16s; }
+    .pop.closing { animation-duration: .12s; }
+    .peek { animation: none; }
+    #logView { transition-duration: .16s; }
   }
   .pop-head {
     display: flex;
@@ -623,7 +662,7 @@
     padding: 8px 12px 10px 3ch;
     font: var(--code-size)/1.5 var(--mono);
   }
-  .pop .pop-body { padding: 8px 12px 10px 3ch; }
+  .pop .pop-body, .peek .pop-body { padding: 8px 12px 10px 3ch; }
   .pop-foot {
     display: flex;
     align-items: center;
@@ -635,11 +674,12 @@
   }
   .pop-foot span { flex: 1; }
   .pop-x { margin-left: auto; padding: 0 8px; font: 16px/1.4 var(--ui); }
-  body.docked #logView { padding-right: calc(var(--dock-w) + 28px); }
+  body.docked #logView { padding-right: calc(var(--dock-w) + 16px); }
   .arrow.pop-cur, .pbox.pop-cur, .tl-bar.pop-cur { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
   @media (max-width: 860px) {
-    .pop { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 45vh; }
-    body.docked #logView { padding-right: 16px; padding-bottom: calc(45vh + 24px); }
+    .pop { top: auto; left: 0; right: 0; bottom: 0; width: auto; height: 45vh; border-left: 0; border-top: 1px solid var(--border); --dock-off: translateY(100%); }
+    .dock-grip { display: none; }
+    body.docked #logView { padding-right: 16px; padding-bottom: calc(45vh + 16px); }
   }
 
   /* ---------- sharing ---------- */
@@ -1000,6 +1040,7 @@
 </main>
 
 <div id="pop" class="pop" role="complementary" aria-label="Entry details" hidden></div>
+<div id="peek" class="peek" role="tooltip" hidden></div>
 
 <dialog id="shareDlg" aria-labelledby="shareTitle">
   <div class="g-body">
@@ -1072,7 +1113,7 @@
         <li>Log lines between calls collapse into <i>internal steps</i>. A pause of 2 seconds or more shows as a red divider, which is usually a wait for a webhook.</li>
         <li>A red <b>&#9888; Exception</b> box marks an exception and an amber <b>&#9888; Error</b> box marks a logged error. A red arrow is a failed response, such as <code>Unauthorized</code> or a 4xx or 5xx status. Hover over a box to see the stack trace.</li>
         <li>Some integrations log their provider calls without a LogType. For those, arrows come from messages like "SubmitPayout request: {...}" and are marked <i>inferred</i>.</li>
-        <li>Hover over an arrow to see its payload, formatted, in a panel on the right. The panel stays open while you hover other arrows; close it with &times; or Esc. Click the arrow to open the entry in the list, and use <b>&larr; Back to flow</b> to return to the same spot.</li>
+        <li>Hover over an arrow for a preview of its payload. Click the arrow, or <b>View details</b>, to open the full payload in a panel on the right. Drag the panel's left edge to resize it; close it with &times; or Esc. <b>Open entry</b> shows the entry in the list, and <b>&larr; Back to flow</b> returns to the same spot.</li>
         <li>Click a trace in the summary to see one request's flow on its own.</li>
       </ol>
       <p class="g-tip">Arrows come from each entry's <code>LogType</code>. Other entries count as internal steps unless they are exceptions or errors.</p>
@@ -2539,7 +2580,7 @@
 
     el.innerHTML = `<div class="fhead"><div></div><div class="flane">${head}</div></div>${body}` +
       '<div class="flegend"><span><i></i>request</span><span class="lr"><i></i>response, with time since its request</span>' +
-      '<span class="lw"><i></i>webhook or callback</span><span class="lx"><i></i>failed response or exception</span><span>Hover an arrow to see its payload. Click it to open the entry.</span></div>';
+      '<span class="lw"><i></i>webhook or callback</span><span class="lx"><i></i>failed response or exception</span><span>Hover an arrow for a preview. Click it to open the details panel.</span></div>';
   }
 
   // ---------- flow popover ----------
@@ -2549,33 +2590,75 @@
   const canHover = window.matchMedia('(hover: hover)').matches;
   let popK = null, popTimer = 0, popAnchor = null;
 
-  function showPop(btn) {
-    clearTimeout(popTimer);
+  // Header and body for a flow arrow; the hover preview and the side panel both use them.
+  function entryParts(btn) {
     const k = +btn.dataset.k;
     const e = LOG.entries[k];
-    if (!e) return;
-    if (popK !== k) {
-      popK = k;
-      const ctx = { expand: expandBox.checked, nested: 0 };
-      const meta = btn.dataset.meta || btn.querySelector('.ameta')?.textContent.replace(/^.*?\d\d:\d\d:\d\d\.\d{3} \u00b7 /, '') || '';
-      pop.innerHTML =
-        `<div class="pop-head"><span class="num">#${e.k + 1}</span>` +
+    if (!e) return null;
+    const ctx = { expand: expandBox.checked, nested: 0 };
+    const meta = btn.dataset.meta || btn.querySelector('.ameta')?.textContent.replace(/^.*?\d\d:\d\d:\d\d\.\d{3} \u00b7 /, '') || '';
+    return {
+      key: k,
+      head: `<span class="num">#${e.k + 1}</span>` +
         `<span class="time">${Number.isFinite(e.t) ? fmtTime(e.t) : ''}</span>` +
         (e.module ? `<span class="mod">${esc(e.module)}</span>` : '') +
-        `<span class="pop-meta">${esc(meta)}</span>${POP_CLOSE}</div>` +
-        `<div class="pop-body dmsg">${msgHtml(e.body, ctx) || '<span class="hint">No message.</span>'}</div>` +
-        `<div class="pop-foot"><span>${canHover ? 'Hover another arrow to switch. Click an arrow to open its entry in the list.' : ''}</span>` +
-        `<button data-open="${k}">Open entry</button></div>`;
-      pop.scrollTop = 0;
+        `<span class="pop-meta">${esc(meta)}</span>`,
+      body: `<div class="pop-body dmsg">${msgHtml(e.body, ctx) || '<span class="hint">No message.</span>'}</div>`,
+      foot: `<div class="pop-foot"><span>Click another arrow to show it here.</span><button data-open="${k}">Open entry</button></div>`
+    };
+  }
+
+  function showPanel(parts, btn) {
+    if (!parts) return;
+    hidePeek();
+    if (popK !== parts.key) {
+      popK = parts.key;
+      pop.innerHTML = '<div class="dock-grip" role="separator" aria-orientation="vertical" aria-label="Resize panel" tabindex="0" title="Drag to resize. Double-click to reset."></div>' +
+        `<div class="pop-head">${parts.head}${POP_CLOSE}</div>${parts.body}${parts.foot || ''}`;
+      pop.querySelector('.pop-body').scrollTop = 0;
     }
+    pop.classList.remove('closing');
     pop.hidden = false;
     popAnchor = btn;
     placePop(btn);
   }
+  const showPop = (btn) => showPanel(entryParts(btn), btn);
 
-  // Docks the panel below the log toolbar and marks the arrow it describes.
+  // ---------- hover preview ----------
+
+  const peek = $('peek');
+  let peekTimer = 0, peekAnchor = null, peekParts = null;
+
+  function showPeek(parts, btn) {
+    clearTimeout(peekTimer);
+    if (!parts || (peekAnchor === btn && !peek.hidden)) return;
+    peekAnchor = btn;
+    peekParts = parts;
+    peek.innerHTML = `<div class="pop-head">${parts.head}</div>${parts.body}` +
+      '<div class="pop-foot"><span>Clicking the arrow opens it too.</span><button data-pin class="primary">View details</button></div>';
+    peek.hidden = false;
+    // Under the hovered arrow when it fits, else above it.
+    const r = btn.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    const w = peek.offsetWidth, h = peek.offsetHeight;
+    peek.style.left = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), vw - w - 8) + 'px';
+    peek.style.top = (r.bottom + 8 + h <= vh - 8 ? r.bottom + 8 : Math.max(8, r.top - 8 - h)) + 'px';
+  }
+
+  function hidePeek(delay = 0) {
+    clearTimeout(peekTimer);
+    peekTimer = setTimeout(() => { peek.hidden = true; peekAnchor = null; peekParts = null; }, delay);
+  }
+
+  peek.addEventListener('mouseenter', () => clearTimeout(peekTimer));
+  peek.addEventListener('mouseleave', () => hidePeek(200));
+  peek.addEventListener('click', (e) => {
+    if (e.target.closest('[data-pin]') && peekAnchor) showPanel(peekParts, peekAnchor);
+  });
+
+  // Docks the panel under the page header and marks the arrow it describes.
   function placePop(btn) {
-    const top = Math.max(8, $('logView').getBoundingClientRect().top + 12);
+    const top = Math.max(0, $('logView').getBoundingClientRect().top);
     document.documentElement.style.setProperty('--dock-top', top + 'px');
     document.querySelectorAll('.pop-cur').forEach(el => el.classList.remove('pop-cur'));
     btn.classList.add('pop-cur');
@@ -2584,22 +2667,72 @@
 
   function hidePop() {
     clearTimeout(popTimer);
-    pop.hidden = true;
     popK = null;
     popAnchor = null;
+    hidePeek();
     document.body.classList.remove('docked');
     document.querySelectorAll('.pop-cur').forEach(el => el.classList.remove('pop-cur'));
+    if (pop.hidden) return;
+    pop.classList.add('closing');
+    // animationend can be skipped (background tab, animations off), so finish on a timer too.
+    popTimer = setTimeout(finishClose, 320);
   }
+  function finishClose() {
+    if (pop.classList.contains('closing')) { pop.classList.remove('closing'); pop.hidden = true; }
+  }
+  pop.addEventListener('animationend', finishClose);
+
+  // Drag the panel's left edge to resize it, like the formatter's split; the width is kept per browser.
+  const DOCK_MIN = 320;
+  function setDockW(px, save) {
+    const w = Math.round(Math.min(Math.max(DOCK_MIN, px), document.documentElement.clientWidth * 0.75));
+    document.documentElement.style.setProperty('--dock-w', w + 'px');
+    if (save) store.set('dockW', String(w));
+  }
+  const savedDockW = parseInt(store.get('dockW'), 10);
+  if (savedDockW) setDockW(savedDockW, false);
+  pop.addEventListener('pointerdown', (e) => {
+    const grip = e.target.closest('.dock-grip');
+    if (!grip) return;
+    grip.setPointerCapture(e.pointerId);
+    document.body.classList.add('resizing');
+  });
+  pop.addEventListener('pointermove', (e) => {
+    const grip = e.target.closest('.dock-grip');
+    if (grip?.hasPointerCapture(e.pointerId)) setDockW(document.documentElement.clientWidth - e.clientX, false);
+  });
+  pop.addEventListener('pointerup', (e) => {
+    const grip = e.target.closest('.dock-grip');
+    if (!grip?.hasPointerCapture(e.pointerId)) return;
+    document.body.classList.remove('resizing');
+    setDockW(document.documentElement.clientWidth - e.clientX, true);
+  });
+  pop.addEventListener('dblclick', (e) => {
+    if (!e.target.closest('.dock-grip')) return;
+    document.documentElement.style.removeProperty('--dock-w');
+    store.set('dockW', '');
+  });
+  pop.addEventListener('keydown', (e) => {
+    if (!e.target.closest('.dock-grip') || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    setDockW(pop.offsetWidth + (e.key === 'ArrowLeft' ? 24 : -24), true);
+  });
 
   const flowEl = $('flow');
+  // Hover gives a quick preview; a click opens the side panel.
   flowEl.addEventListener('mouseover', (e) => {
     const b = e.target.closest('.arrow, .pbox');
-    if (b && canHover) showPop(b);
+    if (b && canHover) showPeek(entryParts(b), b);
+  });
+  flowEl.addEventListener('mouseout', (e) => {
+    const b = e.target.closest('.arrow, .pbox');
+    if (b && !b.contains(e.relatedTarget) && !peek.contains(e.relatedTarget)) hidePeek(200);
   });
   flowEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.arrow, .pbox');
-    if (b) showPop(b);
+    if (b) showPeek(entryParts(b), b);
   });
+  flowEl.addEventListener('focusout', () => hidePeek(200));
   // The panel stays open until closed, so the user can read it while hovering other arrows.
   pop.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) { hidePop(); return; }
@@ -2607,7 +2740,11 @@
     if (b) { hidePop(); goToEntry(+b.dataset.open); }
   });
   window.addEventListener('resize', () => { if (!pop.hidden && popAnchor) placePop(popAnchor); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) hidePop(); });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!peek.hidden) hidePeek();
+    else if (!pop.hidden) hidePop();
+  });
 
   // ---------- back to flow ----------
 
@@ -2655,11 +2792,11 @@
     const b = e.target.closest('[data-mode]');
     if (b) setMode(b.dataset.mode, true);
   });
-  // Touch screens have no hover, so the first tap shows the popover and its button opens the entry.
+  // A click on an arrow opens the side panel; its Open entry button jumps to the list.
   $('flow').addEventListener('click', (e) => {
     const b = e.target.closest('[data-k]');
     if (!b) return;
-    if (!canHover && b.matches('.arrow, .pbox') && popK !== +b.dataset.k) { showPop(b); return; }
+    if (b.matches('.arrow, .pbox')) { showPop(b); return; }
     goToEntry(+b.dataset.k);
   });
   // Read before setMode, which stores 'list' while no timeline data is loaded yet.
@@ -2944,13 +3081,11 @@
     return tr && { tr, s: tr.by.get(ref.slice(i + 1)) };
   }
 
-  function showSpanPop(btn) {
-    clearTimeout(popTimer);
+  function spanParts(btn) {
     const ref = btn.dataset.span;
     const hit = ref && findSpan(ref);
-    if (!hit?.s) return;
-    if (popK !== 'span:' + ref) {
-      popK = 'span:' + ref;
+    if (!hit?.s) return null;
+    {
       const { tr, s } = hit, a = s.attrs;
       const rows = Object.entries(a)
         .filter(([k]) => k !== 'db.query.text' && k !== 'db.statement')
@@ -2958,10 +3093,11 @@
       const sql = a['db.query.text'] || a['db.statement'];
       const logs = LOG.spanLogs.get(s.id) || [];
       const exc = s.events.map(e => `<tr><th>${esc(e.attrs['exception.type'] || e.name)}</th><td>${esc(e.attrs['exception.message'] || '')}</td></tr>`).join('');
-      pop.innerHTML =
-        `<div class="pop-head"><span class="mod">${esc(CATS[s.cat])}</span><span class="time">${fmtTime(s.start)}</span>` +
-        `<span class="pop-meta">took ${fmtDur(s.end - s.start)} · starts ${fmtDur(s.start - tr.start)} into the request</span>${POP_CLOSE}</div>` +
-        `<div class="pop-body">` +
+      return {
+        key: 'span:' + ref,
+        head: `<span class="mod">${esc(CATS[s.cat])}</span><span class="time">${fmtTime(s.start)}</span>` +
+          `<span class="pop-meta">took ${fmtDur(s.end - s.start)} · starts ${fmtDur(s.start - tr.start)} into the request</span>`,
+        body: `<div class="pop-body">` +
         `<div class="dmsg">${esc(spanLabel(s))}</div>` +
         (sql ? `<h4>SQL</h4><div class="dmsg">${esc(sql.trim())}</div>` : '') +
         (s.status?.message ? `<h4>Status</h4><div class="dmsg exc">${esc(s.status.message)}</div>` : '') +
@@ -2970,23 +3106,26 @@
         (logs.length ? `<h4>${logs.length} log line${logs.length === 1 ? '' : 's'} in this step</h4>` + logs.slice(0, 30).map(e =>
           `<button class="plog${e.problem ? ' prob-' + e.problem.kind : ''}" data-open="${e.k}"><span class="time">${fmtTime(e.t)}</span>` +
           `<span class="msg">${esc(e.body.replace(/\s+/g, ' ').slice(0, 200))}</span></button>`).join('') : '') +
-        '</div>';
-      pop.scrollTop = 0;
+        '</div>'
+      };
     }
-    pop.hidden = false;
-    popAnchor = btn;
-    placePop(btn);
   }
+  const showSpanPop = (btn) => showPanel(spanParts(btn), btn);
 
   const tlEl = $('timeline');
   tlEl.addEventListener('mouseover', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
-    if (b && canHover) showSpanPop(b);
+    if (b && canHover) showPeek(spanParts(b), b);
+  });
+  tlEl.addEventListener('mouseout', (e) => {
+    const b = e.target.closest('.tl-bar[data-span]');
+    if (b && !b.contains(e.relatedTarget) && !peek.contains(e.relatedTarget)) hidePeek(200);
   });
   tlEl.addEventListener('focusin', (e) => {
     const b = e.target.closest('.tl-bar[data-span]');
-    if (b) showSpanPop(b);
+    if (b) showPeek(spanParts(b), b);
   });
+  tlEl.addEventListener('focusout', () => hidePeek(200));
   tlEl.addEventListener('click', (e) => {
     const g = e.target.closest('[data-grp]');
     if (g) {
